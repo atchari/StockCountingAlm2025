@@ -18,7 +18,7 @@
 2.ใช้ .net 10
 
 ที่อยากให้ทำ
-1.ทำ endpoint เกี่ยวกับการ authen , login , เปลี่ยน password หรืออะไรก็แล้วแต่ (minimal api และจัดโครงสร้างไฟล์ให้อ่านง่ายหน่อย เผื่อการขยาย app)
+1.ทำ endpoint เกี่ยวกับการ authen , login , register , เปลี่ยน password หรืออะไรก็แล้วแต่ (minimal api และจัดโครงสร้างไฟล์ให้อ่านง่ายหน่อย เผื่อการขยาย app)
 2.map ตารางใน ฐานข้อมูลให้ด้วย ในฐานข้อมูลมีตารางอยู่แล้ว เป็นไปได้ไหม ที่จะใช้ EF จากตารางที่มีอยู่แล้ว
 
 ntf_WhsGroup
@@ -52,10 +52,29 @@ createdAt(datetime,null)
 4.อธิบาย ตารางง่ายๆ 
     4.1 Location จะอยู่ใน Warehouse
     4.2 เรากำลังจะเอา SKU กับ batch number ไปผูกกับ Location
-5.authorize จาก frontend จะใช้ jwt
+5.authorize จาก frontend จะใช้ jwt แบบ http cookie
+6.seed user "admin" ให้ด้วย พร้อมตั้งรหัสว่า "Admin@2025"
 
 
 front end (StockCountFront) ใช้ react vite + shacdn
 
 1.ต้องการ layout เหมือน dashboard ขอแบบง่ายๆของ shachn เลย
-2.บังคับให้ user ต้อง login ก่อน เสมอ ถึงจะเข้ามาหน้าทำงานได้ ไม่งั้น ก็ไปหน้า register
+2.บังคับให้ user ต้อง login ก่อน เสมอ ถึงจะเข้ามาหน้าทำงานได้ 
+3.ทำหน้า สำหรับ register ไว้ให้ด้วย
+4.menu ด้านข้างที่ side bar อยากให้มี
+    4.1 Dashboard
+    4.2 Scan ใบนับ
+    4.3 Master Data
+        4.3.1 Warehouse
+        4.3.2 Bin Location
+        4.3.3 Bin Mapping
+    4.4 Scan Bin Mapping       <----- เดี๋ยวจะเน้นทำที่ตัวนี้ ที่ให้ user scan label เพื่อเก็บ location
+    4.5 Admin                   <-------- menu นี้ให้เห็นแค่ admin
+        4.5.1 User                  <------- เอาไว้จัดการ user
+5.backend base URL น่าจะเป็น http://localhost:5121
+6.ใช้ axios ในการดึง api
+7.ถ้าโปรเจคจำเป็นต้องมีการเก็บ global state ให้ใช้ redux พร้อมตั้ง folder redux ขึ้นมาให้อ่านง่าย
+8.จัด route ให้ตั้ง folder ชื่อ page มา เพื่อให้หาง่าย ว่า UI หน้าไหน อยู่ตรงไหน ตามโครงสร้างหน้าเวป
+
+
+แล้วทำไฟล์สรุป ข้อมูล สิ่งที่ทำของโปรเจค ไว้ที project-detail.md ให้ด้วย
