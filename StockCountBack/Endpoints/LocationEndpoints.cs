@@ -13,13 +13,13 @@ public static class LocationEndpoints
         var loc = app.MapGroup("/api/locations").RequireAuthorization();
 
         // Get all locations
-        loc.MapGet("/", async (StockCountDbContext db, string? whsId) =>
+        loc.MapGet("/", async (StockCountDbContext db, int? whsId) =>
         {
             var query = db.NtfLocations.AsQueryable();
             
-            if (!string.IsNullOrEmpty(whsId))
+            if (whsId.HasValue)
             {
-                query = query.Where(l => l.WhsId == whsId);
+                query = query.Where(l => l.WhsId == whsId.Value);
             }
 
             var locations = await query

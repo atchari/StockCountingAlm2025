@@ -12,8 +12,7 @@ public class NtfLocation
 
     [Column("whsId")]
     [Required]
-    [MaxLength(50)]
-    public string WhsId { get; set; } = string.Empty;
+    public int WhsId { get; set; }
 
     [Column("binLocation")]
     [Required]

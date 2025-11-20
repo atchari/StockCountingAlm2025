@@ -97,8 +97,8 @@ StockCountBack/
 StockCountFront/
 ├── src/
 │   ├── api/
-│   │   ├── client.ts                   # Axios instance
-│   │   └── index.ts                    # API services
+│   │   ├── client.ts                   # Axios instance with interceptors
+│   │   └── index.ts                    # API services (all endpoints)
 │   ├── redux/
 │   │   ├── store.ts                    # Redux store
 │   │   ├── authSlice.ts                # Authentication state
@@ -112,15 +112,18 @@ StockCountFront/
 │   │       └── ...
 │   ├── pages/
 │   │   ├── LoginPage.tsx               # หน้า Login
-│   │   ├── DashboardPage.tsx           # หน้า Dashboard
-│   │   └── ScanBinMappingPage.tsx      # หน้าสแกน Bin Mapping
+│   │   ├── DashboardPage.tsx           # หน้า Dashboard (TODO)
+│   │   ├── ScanBinMappingPage.tsx      # หน้าสแกน Bin Mapping (หลัก)
+│   │   ├── WarehouseManagementPage.tsx # จัดการคลัง (Admin)
+│   │   ├── LocationManagementPage.tsx  # จัดการ Location (Admin)
+│   │   ├── BinMappingManagementPage.tsx # ดู/ลบ Mapping (Admin)
+│   │   └── UserManagementPage.tsx      # จัดการผู้ใช้ (Admin)
 │   ├── lib/
 │   │   └── utils.ts                    # Utility functions
 │   ├── App.tsx                         # Main app with routing
 │   ├── main.tsx                        # Entry point
-│   └── index.css                       # Global styles (Tailwind)
+│   └── index.css                       # Global styles (Tailwind v4)
 ├── components.json                     # shadcn config
-├── tailwind.config.ts                  # Tailwind config (ถ้ามี)
 ├── vite.config.ts                      # Vite config
 └── package.json
 ```
@@ -343,6 +346,7 @@ Frontend จะรันที่ `http://localhost:5173`
 - Duplicate checking
 - Role-based Authorization (admin/staff)
 - Database Seeding (admin user)
+- Removed deprecated WithOpenApi() methods
 
 ✅ Frontend
 - Login Page
@@ -350,35 +354,273 @@ Frontend จะรันที่ `http://localhost:5173`
 - Dashboard Layout with Sidebar
 - Redux State Management
 - Axios API Client
-- Scan Bin Mapping Page (หลัก)
+- **Scan Bin Mapping Page** (หน้าหลักสำหรับ Phase 0)
+  - Auto-focus & clear pattern
+  - Validation & immediate feedback
+  - Error handling with recovery
+- **Master Data Pages** (Admin only):
+  - ✅ Warehouse Management (CRUD)
+  - ✅ Bin Location Management (CRUD with filter)
+  - ✅ Bin Mapping Management (View/Delete with filters)
+- **Admin Pages**:
+  - ✅ User Management (CRUD + Reset Password)
 
 ## ฟีเจอร์ที่ยังไม่ทำ (TODO)
 
 Frontend Pages ที่ยังไม่ได้สร้าง:
 - [ ] Dashboard Page (แสดงสถิติ)
-- [ ] Scan Count Page
-- [ ] Master Data Pages:
-  - [ ] Warehouse Management (CRUD)
-  - [ ] Bin Location Management (CRUD)
-  - [ ] Bin Mapping Management (View/Delete)
-- [ ] Admin Pages:
-  - [ ] User Management (CRUD)
-- [ ] Register Page (สำหรับ admin สร้าง user)
+- [ ] Scan Count Page (Phase 1)
 
 ## การทำงานของระบบ Scan Bin Mapping
 
+### User Flow
 1. พนักงานเปิดหน้า **Scan Bin Mapping**
 2. เลือก **Warehouse** (เช่น WH_MILL)
 3. เลือก **Bin Location** (เช่น A1)
 4. Scan label ที่ติดอยู่บนสินค้า (เชื่อม barcode scanner)
 5. Label จะมีรูปแบบ: `|SKU|batchNumber|`
    - ตัวอย่าง: `|3012-001_AN_6063/T5_MILL|E7-01-00001|`
-6. กด **บันทึก**
+6. กด **บันทึก** (หรือ Enter)
 7. ระบบจะ:
    - แยก SKU และ BatchNo จาก scanned data
    - เช็คว่าซ้ำหรือไม่
    - บันทึกลง database พร้อม userId
 8. แสดงผลว่า "บันทึกสำเร็จ" หรือ "ซ้ำ"
+
+### UX Best Practices สำหรับหน้า Scan
+
+**การออกแบบเพื่อประสิทธิภาพในการสแกน:**
+
+#### 1. Auto Focus & Clear Pattern
+```typescript
+// หลังบันทึกสำเร็จ
+setScannedData('');           // เคลียร์ช่อง input
+scanInputRef.current?.focus(); // Focus กลับไปที่ช่อง scan ทันที
+```
+
+**เหตุผล:** ให้ผู้ใช้สามารถสแกนต่อเนื่องได้ทันทีโดยไม่ต้องคลิกหรือกด Tab
+
+#### 2. Validation & Immediate Feedback
+```typescript
+// ตรวจสอบรูปแบบ label ก่อนส่ง backend
+if (!scannedData.startsWith('|')) {
+  setError('ตรวจสอบ sticker หรือ ภาษาของ keyboard');
+  setScannedData('');           // เคลียร์ข้อมูลผิด
+  scanInputRef.current?.focus(); // พร้อม scan ใหม่ทันที
+  return;
+}
+```
+
+**เหตุผล:** 
+- ป้องกันปัญหา keyboard เป็นภาษาไทย (| จะกลายเป็น ฃ)
+- ป้องกันการส่งข้อมูลผิดรูปแบบไป backend
+- ประหยัดเวลา - ไม่ต้องรอ API response ถ้ารู้ว่าผิดแน่ๆ
+
+#### 3. Error Handling with Recovery
+```typescript
+try {
+  await binMappingAPI.scan(selectedLocation, scannedData);
+  setMessage('บันทึกสำเร็จ!');
+  setScannedData('');
+  scanInputRef.current?.focus();
+} catch (err: any) {
+  if (err.response?.status === 409) {
+    setError('SKU และ Batch Number นี้ถูกบันทึกไว้แล้ว');
+  } else {
+    setError(err.response?.data?.error || 'บันทึกไม่สำเร็จ');
+  }
+  setScannedData('');           // เคลียร์แม้ error
+  scanInputRef.current?.focus(); // พร้อม scan ต่อทันที
+}
+```
+
+**เหตุผล:**
+- แม้เจอ error (เช่น ข้อมูลซ้ำ) ก็ให้เคลียร์และพร้อม scan ต่อ
+- ไม่ทำให้ผู้ใช้ต้องลบข้อมูลเก่าเอง
+- เพิ่มความเร็วในการทำงานต่อเนื่อง
+
+#### 4. Visual Feedback
+```tsx
+{message && (
+  <div className="p-3 text-sm text-green-600 bg-green-50 rounded-md">
+    {message}
+  </div>
+)}
+
+{error && (
+  <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">
+    {error}
+  </div>
+)}
+```
+
+**เหตุผล:**
+- ให้ feedback ชัดเจนว่าสำเร็จหรือ error
+- ใช้สีเพื่อแยกแยะสถานะ (เขียว = สำเร็จ, แดง = error)
+
+#### 5. Input Type & Auto-Focus
+```tsx
+<input
+  ref={scanInputRef}
+  type="text"
+  value={scannedData}
+  onChange={(e) => setScannedData(e.target.value)}
+  className="w-full px-3 py-2 border rounded-md font-mono"
+  placeholder="|3012-001_AN_6063/T5_MILL|E7-01-00001|"
+  required
+  autoFocus  // Focus ทันทีที่เข้าหน้า
+/>
+```
+
+**เหตุผล:**
+- `autoFocus` = พร้อมใช้งานทันทีที่เข้าหน้า
+- `font-mono` = ง่ายต่อการอ่านรูปแบบ barcode
+- `placeholder` = แสดงตัวอย่างให้เห็นรูปแบบที่ถูกต้อง
+
+### สรุป UX Pattern สำหรับหน้า Scan
+
+| สถานการณ์ | การทำงานของระบบ | เหตุผล |
+|-----------|-----------------|--------|
+| **บันทึกสำเร็จ** | เคลียร์ช่อง + Focus + แสดงข้อความสีเขียว | ให้สแกนต่อได้ทันที |
+| **รูปแบบผิด** (ไม่ขึ้นต้นด้วย \|) | แจ้งเตือน + เคลียร์ช่อง + Focus | ป้องกัน keyboard ภาษาไทย/sticker ผิด |
+| **ข้อมูลซ้ำ** (409) | แจ้งเตือนสีแดง + เคลียร์ช่อง + Focus | ให้สแกนใบใหม่ได้ทันที |
+| **Error อื่นๆ** | แจ้งเตือนสีแดง + เคลียร์ช่อง + Focus | Recovery ให้ทำงานต่อได้ |
+| **เข้าหน้าใหม่** | Auto-focus ที่ช่อง scan | เริ่มทำงานได้ทันที |
+
+## Master Data Management Pages (Admin Only)
+
+### 1. Warehouse Management (`/master/warehouse`)
+**ฟีเจอร์:**
+- ดูรายการคลังทั้งหมด (Table view)
+- เพิ่มคลังใหม่ (Inline form)
+- แก้ไขชื่อคลัง (Inline edit)
+- ลบคลัง
+- Authorization: เฉพาะ admin เท่านั้น
+
+**หน้าตา:**
+```
++----+------------+---------------------+--------+
+| ID | ชื่อคลัง   | วันที่สร้าง        | จัดการ  |
++----+------------+---------------------+--------+
+| 1  | WH_MILL    | 20/11/2025 09:00   | แก้ไข ลบ |
+| 2  | WH_PAINT   | 20/11/2025 10:30   | แก้ไข ลบ |
++----+------------+---------------------+--------+
+```
+
+### 2. Bin Location Management (`/master/bin-location`)
+**ฟีเจอร์:**
+- ดูรายการ Location ทั้งหมด (Table view)
+- กรองตามคลัง (Filter dropdown)
+- เพิ่ม Location ใหม่ (Form: เลือกคลัง + กรอก bin location)
+- แก้ไข Location (Inline edit)
+- ลบ Location
+- Authorization: เฉพาะ admin เท่านั้น
+
+**หน้าตา:**
+```
+Filter: [Warehouse Dropdown ▼] [All / WH_MILL / WH_PAINT]
+
++----+---------+---------------+---------------------+--------+
+| ID | คลัง    | Bin Location  | วันที่สร้าง        | จัดการ  |
++----+---------+---------------+---------------------+--------+
+| 1  | WH_MILL | A1            | 20/11/2025 09:00   | แก้ไข ลบ |
+| 2  | WH_MILL | A2            | 20/11/2025 09:05   | แก้ไข ลบ |
+| 3  | WH_MILL | B1            | 20/11/2025 09:10   | แก้ไข ลบ |
++----+---------+---------------+---------------------+--------+
+```
+
+### 3. Bin Mapping Management (`/master/bin-mapping`)
+**ฟีเจอร์:**
+- ดูรายการ Mapping ทั้งหมด (Table view with scroll)
+- กรองตามคลัง (Warehouse dropdown)
+- กรองตาม Location (Location dropdown - filtered by warehouse)
+- ลบ Mapping (Delete only - ไม่มี Create/Edit)
+- แสดง: Location, SKU, Batch No, User ID, วันที่สร้าง
+- Authorization: เฉพาะ admin เท่านั้น
+
+**หมายเหตุ:** การเพิ่ม Mapping ให้ใช้หน้า "Scan Bin Mapping" แทน
+
+**หน้าตา:**
+```
+Filter: [Warehouse ▼] [Location ▼]
+
++----+-----------------+---------------------------+---------------+--------+---------------------+------+
+| ID | Location        | SKU                       | Batch No      | User ID| วันที่สร้าง        | ลบ   |
++----+-----------------+---------------------------+---------------+--------+---------------------+------+
+| 1  | WH_MILL - A1    | 3012-001_AN_6063/T5_MILL | E7-01-00001   | 2      | 20/11/2025 11:00   | ลบ   |
+| 2  | WH_MILL - A1    | 3012-002_AN_6063/T5_MILL | E7-01-00002   | 2      | 20/11/2025 11:02   | ลบ   |
++----+-----------------+---------------------------+---------------+--------+---------------------+------+
+```
+
+## Admin Pages
+
+### User Management (`/admin/users`)
+**ฟีเจอร์:**
+- ดูรายการผู้ใช้ทั้งหมด (Table view)
+- เพิ่มผู้ใช้ใหม่ (Form: username, password, fullName, role)
+- แก้ไขผู้ใช้ (Inline edit: fullName, role)
+- รีเซ็ตรหัสผ่าน (Prompt for new password)
+- ลบผู้ใช้ (ยกเว้น admin user)
+- แสดง role badge (Admin = purple, Staff = blue)
+- Authorization: เฉพาะ admin เท่านั้น
+
+**หน้าตา:**
+```
++----+----------+------------------+-------+---------------------+--------------------------+
+| ID | Username | ชื่อ-นามสกุล     | Role  | วันที่สร้าง        | จัดการ                    |
++----+----------+------------------+-------+---------------------+--------------------------+
+| 1  | admin    | System Admin     | admin | 20/11/2025 08:00   | แก้ไข รีเซ็ตรหัสผ่าน      |
+| 2  | staff01  | John Doe         | staff | 20/11/2025 09:00   | แก้ไข รีเซ็ตรหัสผ่าน ลบ   |
++----+----------+------------------+-------+---------------------+--------------------------+
+```
+
+**Business Rules:**
+- Username ไม่สามารถแก้ไขได้หลังสร้าง
+- Admin user (id=1, username=admin) ลบไม่ได้
+- การรีเซ็ตรหัสผ่านจะ prompt ให้กรอกรหัสใหม่
+- Role มี 2 แบบ: "admin" และ "staff"
+
+### เทคนิคสำคัญสำหรับหน้าอื่นๆ ที่มีการ Scan
+
+1. **ใช้ useRef** เพื่อควบคุม focus
+   ```typescript
+   const scanInputRef = useRef<HTMLInputElement>(null);
+   ```
+
+2. **Validate Format ที่ Frontend ก่อน** - ประหยัดเวลา round-trip
+   ```typescript
+   if (!data.startsWith('expected_pattern')) {
+     // Show error immediately
+   }
+   ```
+
+3. **เคลียร์และ Focus ในทุกกรณี** - ทั้งสำเร็จและ error
+   ```typescript
+   setInputData('');
+   inputRef.current?.focus();
+   ```
+
+4. **ใช้ font-mono** สำหรับช่อง input ที่เป็น barcode/code
+   ```tsx
+   className="font-mono"
+   ```
+
+5. **แสดง placeholder ที่เป็นตัวอย่างจริง** - ช่วยให้ user เข้าใจรูปแบบ
+   ```tsx
+   placeholder="|REAL_EXAMPLE_HERE|"
+   ```
+
+6. **Immediate Validation Feedback** - อย่ารอให้กดปุ่ม
+   ```tsx
+   onChange={(e) => {
+     const value = e.target.value;
+     setInputData(value);
+     // Optional: Real-time validation
+     if (value && !value.startsWith('|')) {
+       setWarning('ตรวจสอบภาษา keyboard');
+     }
+   }}
+   ```
 
 ## Security Features
 

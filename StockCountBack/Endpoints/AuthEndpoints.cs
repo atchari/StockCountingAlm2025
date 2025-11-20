@@ -51,8 +51,7 @@ public static class AuthEndpoints
             return Results.Ok(response);
         })
         .AllowAnonymous()
-        .WithName("Login")
-        .WithOpenApi();
+        .WithName("Login");
 
         // Register
         auth.MapPost("/register", async ([FromBody] RegisterRequest request, StockCountDbContext db, IAuthService authService) =>
@@ -78,8 +77,7 @@ public static class AuthEndpoints
             return Results.Created($"/api/users/{newUser.Id}", userDto);
         })
         .RequireAuthorization(policy => policy.RequireRole("admin"))
-        .WithName("Register")
-        .WithOpenApi();
+        .WithName("Register");
 
         // Change Password
         auth.MapPost("/change-password", async ([FromBody] ChangePasswordRequest request, ClaimsPrincipal user, StockCountDbContext db, IAuthService authService) =>
@@ -109,8 +107,7 @@ public static class AuthEndpoints
             return Results.Ok(new { message = "Password changed successfully" });
         })
         .RequireAuthorization()
-        .WithName("ChangePassword")
-        .WithOpenApi();
+        .WithName("ChangePassword");
 
         // Get Current User
         auth.MapGet("/me", async (ClaimsPrincipal user, StockCountDbContext db) =>
@@ -133,8 +130,7 @@ public static class AuthEndpoints
             return Results.Ok(userDto);
         })
         .RequireAuthorization()
-        .WithName("GetCurrentUser")
-        .WithOpenApi();
+        .WithName("GetCurrentUser");
 
         // Logout
         auth.MapPost("/logout", () =>
@@ -142,7 +138,6 @@ public static class AuthEndpoints
             return Results.Ok(new { message = "Logged out successfully" });
         })
         .RequireAuthorization()
-        .WithName("Logout")
-        .WithOpenApi();
+        .WithName("Logout");
     }
 }

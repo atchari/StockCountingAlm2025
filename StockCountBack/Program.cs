@@ -13,7 +13,9 @@ builder.Services.AddOpenApi();
 
 // Database
 builder.Services.AddDbContext<StockCountDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("AlmSqlServer")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("AlmSqlServer"))
+           .EnableSensitiveDataLogging()
+           .LogTo(Console.WriteLine, LogLevel.Information));
 
 // Services
 builder.Services.AddSingleton<IAuthService, AuthService>();

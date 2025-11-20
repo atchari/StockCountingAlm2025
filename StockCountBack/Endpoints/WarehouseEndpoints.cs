@@ -8,14 +8,16 @@ namespace StockCountBack.Endpoints;
 
 public static class WarehouseEndpoints
 {
-    public static void MapWarehouseEndpoints(this WebApplication app)
+    public static void MapWarehouseEndpoints(this IEndpointRouteBuilder app)
     {
         var whs = app.MapGroup("/api/warehouses").RequireAuthorization();
 
-        // Get all warehouses
+        // GET all warehouses
         whs.MapGet("/", async (StockCountDbContext db) =>
         {
+            // Use raw SQL to bypass column name mapping issues
             var warehouses = await db.NtfWhsGroups
+                .FromSqlRaw("SELECT * FROM ntf_WhsGroup")
                 .Select(w => new WhsGroupDto(w.Id, w.WhsName, w.CreatedAt))
                 .ToListAsync();
             return Results.Ok(warehouses);

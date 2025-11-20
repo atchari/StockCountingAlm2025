@@ -12,8 +12,8 @@ public record UpdateUserRequest(string? FullName, string? Role);
 public record WhsGroupDto(int Id, string WhsName, DateTime? CreatedAt);
 public record CreateWhsGroupRequest(string WhsName);
 
-public record LocationDto(int Id, string WhsId, string BinLocation, DateTime? CreatedAt);
-public record CreateLocationRequest(string WhsId, string BinLocation);
+public record LocationDto(int Id, int WhsId, string BinLocation, DateTime? CreatedAt);
+public record CreateLocationRequest(int WhsId, string BinLocation);
 
 public record BinMappingDto(int Id, int BinId, string Sku, string BatchNo, int UserId, DateTime? CreatedAt);
 public record CreateBinMappingRequest(int BinId, string Sku, string BatchNo);

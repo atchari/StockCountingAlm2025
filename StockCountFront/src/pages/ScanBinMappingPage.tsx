@@ -1,16 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { Combobox } from '@/components/ui/combobox';
 import { warehouseAPI, locationAPI, binMappingAPI } from '@/api';
 import type { Warehouse, Location } from '@/api';
 
 export default function ScanBinMappingPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
-  const [selectedWarehouse, setSelectedWarehouse] = useState('');
+  const [selectedWarehouse, setSelectedWarehouse] = useState<number | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
   const [scannedData, setScannedData] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const scanInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadWarehouses();
@@ -31,7 +33,7 @@ export default function ScanBinMappingPage() {
     }
   };
 
-  const loadLocations = async (whsId: string) => {
+  const loadLocations = async (whsId: number) => {
     try {
       const data = await locationAPI.getAll(whsId);
       setLocations(data);
@@ -50,16 +52,28 @@ export default function ScanBinMappingPage() {
       return;
     }
 
+    // Validate that scanned data starts with |
+    if (!scannedData.startsWith('|')) {
+      setError('ตรวจสอบ sticker หรือ ภาษาของ keyboard');
+      setScannedData('');
+      scanInputRef.current?.focus();
+      return;
+    }
+
     try {
       await binMappingAPI.scan(selectedLocation, scannedData);
       setMessage('บันทึกสำเร็จ!');
       setScannedData('');
+      // Focus back to scan input for next scan
+      scanInputRef.current?.focus();
     } catch (err: any) {
       if (err.response?.status === 409) {
         setError('SKU และ Batch Number นี้ถูกบันทึกไว้แล้ว');
       } else {
         setError(err.response?.data?.error || 'บันทึกไม่สำเร็จ');
       }
+      setScannedData('');
+      scanInputRef.current?.focus();
     }
   };
 
@@ -72,14 +86,14 @@ export default function ScanBinMappingPage() {
           <div>
             <label className="block text-sm font-medium mb-1">Warehouse</label>
             <select
-              value={selectedWarehouse}
-              onChange={(e) => setSelectedWarehouse(e.target.value)}
+              value={selectedWarehouse || ''}
+              onChange={(e) => setSelectedWarehouse(Number(e.target.value) || null)}
               className="w-full px-3 py-2 border rounded-md"
               required
             >
               <option value="">เลือก Warehouse</option>
               {warehouses.map((wh) => (
-                <option key={wh.id} value={wh.id.toString()}>
+                <option key={wh.id} value={wh.id}>
                   {wh.whsName}
                 </option>
               ))}
@@ -88,20 +102,18 @@ export default function ScanBinMappingPage() {
 
           <div>
             <label className="block text-sm font-medium mb-1">Bin Location</label>
-            <select
-              value={selectedLocation || ''}
-              onChange={(e) => setSelectedLocation(Number(e.target.value))}
-              className="w-full px-3 py-2 border rounded-md"
-              required
-              disabled={!selectedWarehouse}
-            >
-              <option value="">เลือก Bin Location</option>
-              {locations.map((loc) => (
-                <option key={loc.id} value={loc.id}>
-                  {loc.binLocation}
-                </option>
-              ))}
-            </select>
+            <Combobox
+              options={locations.map((loc) => ({
+                value: String(loc.id),
+                label: loc.binLocation,
+              }))}
+              value={selectedLocation ? String(selectedLocation) : undefined}
+              onValueChange={(value) => setSelectedLocation(Number(value))}
+              placeholder="เลือก Bin Location"
+              searchPlaceholder="ค้นหา location..."
+              emptyText="ไม่พบ location"
+              className="w-full"
+            />
           </div>
 
           <div>
@@ -109,6 +121,7 @@ export default function ScanBinMappingPage() {
               Scan Label (รูปแบบ: |SKU|batchNumber|)
             </label>
             <input
+              ref={scanInputRef}
               type="text"
               value={scannedData}
               onChange={(e) => setScannedData(e.target.value)}

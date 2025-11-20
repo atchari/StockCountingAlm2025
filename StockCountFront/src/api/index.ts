@@ -87,13 +87,13 @@ export const warehouseAPI = {
 
 export interface Location {
   id: number;
-  whsId: string;
+  whsId: number;
   binLocation: string;
   createdAt: string | null;
 }
 
 export const locationAPI = {
-  getAll: async (whsId?: string) => {
+  getAll: async (whsId?: number) => {
     const params = whsId ? { whsId } : {};
     const response = await apiClient.get<Location[]>('/api/locations', { params });
     return response.data;
@@ -104,12 +104,12 @@ export const locationAPI = {
     return response.data;
   },
 
-  create: async (whsId: string, binLocation: string) => {
+  create: async (whsId: number, binLocation: string) => {
     const response = await apiClient.post<Location>('/api/locations', { whsId, binLocation });
     return response.data;
   },
 
-  update: async (id: number, whsId: string, binLocation: string) => {
+  update: async (id: number, whsId: number, binLocation: string) => {
     const response = await apiClient.put<Location>(`/api/locations/${id}`, { whsId, binLocation });
     return response.data;
   },
