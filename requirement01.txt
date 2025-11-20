@@ -1,0 +1,61 @@
+จะเขียนโปรแกรม ที่ใช้ในกิจกรรมนับ stock สิ้นปี แต่ก่อนจะเป็นโปรแกรมนับ stock ได้ มันจะมี phase 0 ที่เรียกว่า phase เตรียมการคือ
+การเตรียมว่า สินค้าอะไรอยู่ zone ไหน เพราะว่า เป็นคลังแบบไม่มี location ตายตัว สินค้าจะเปลี่ยนที่อยู่ไปเรื่อยๆได้
+
+แต่สิ่งที่เราจะเตรียมการคือ การกำหนด location ชั่วคราวก่อนการนับ เพราะว่าสินค้าจะหยุดนิ่งแล้ว ไม่ให้ขยับสินค้า หยุดการเบิกจ่ายทั้งหมด
+
+1.พนักงาน WH ได้กำหนดพื้นที่จริงแล้วว่า ในคลังนั้น เช่นคลัง WH_MILL จะมี location อะไรบ้างเช่น A1,A2,B1,B2,B3,....
+2.พนักงาน WH จะทำการติด sticker label ที่เป็น datamatrix หรือ QR code ข้อมูลในนั้นจะ scanออกมาได้แบบนี้
+   |SKU|batchNumber| ยกตัวอย่างเช่น |3012-001_AN_6063/T5_MILL|E7-01-00001| เป็นต้น ( ตัว "|" ออกมาด้วยนะ เดี๋ยวมาตัดคำเอาที่หลัง )
+   หมายเหตุ label ไม่ได้เอาไว้ใช้ตอนนับ stock เดี๋ยวตอนนับ stock จะมี count sheet อีกที
+3.ขั้นตอนการทำงานที่จะทำคือ พนักงาน ไปยืนที่ตำแหน่ง เช่น A1 (ถือคอมพิวเตอร์ที่ เสียบ barcoard scaner ไปด้วย) แล้วเลือก WH binlocation แล้วทำการ scan label ทั้งหมดที่อยู่ใน A1
+โปรแกรมจะทำการบรรทึกว่า binlocation นั้น มี sku อะไร batch อะไรอยู่บ้าง พร้อมบันทึกว่า ใครเป็นผู้ scan และต้องตรวจสอบได้ด้วยว่ามีซ้ำรึยัง ถ้ามีแล้วก็ไม่บรรทึกซ้ำ
+
+อยากให้ช่วยทำระบบ บรรทึก binlocation ให้กับ sku+bathnumber ลงตารางให้ที แล้วเดี๋ยวจะต่อยอดไป phase ถัดไปอีกที
+
+ฺBackend (StockCountBack)
+รายละเอียด
+1.ที่ไฟล์ StockCountBack\appsettings.Development.json มี connection string แล้ว AlmSqlServer (SQL Server)
+2.ใช้ .net 10
+
+ที่อยากให้ทำ
+1.ทำ endpoint เกี่ยวกับการ authen , login , เปลี่ยน password หรืออะไรก็แล้วแต่ (minimal api และจัดโครงสร้างไฟล์ให้อ่านง่ายหน่อย เผื่อการขยาย app)
+2.map ตารางใน ฐานข้อมูลให้ด้วย ในฐานข้อมูลมีตารางอยู่แล้ว เป็นไปได้ไหม ที่จะใช้ EF จากตารางที่มีอยู่แล้ว
+
+ntf_WhsGroup
+id (PK,int,notnull)
+whsName (varchar(50),not null)
+createdAt(datetime,null)
+
+ntf_BinMapping
+id (PK,int,notnull)
+binId (int,not null)
+sku (varchar(50), not null)
+batchNo (varchar(50), not null)
+userId (int,not null)
+createdAt(datetime,null)
+
+ntf_Location
+id (PK,int,notnull)
+whsId (varchar(50),not null)
+binLocation (varchar(50),not null)
+createdAt(datetime,null)
+
+ntf_User
+id (PK,int,notnull)
+userName (varchart(50),null)
+userPassword(varchar(255),null)
+fullName (varchar(150),null)
+role(varchar(20),null)
+createdAt(datetime,null)
+
+3.ตาราง ntf_User ใช้เพื่อเก็บ user ที่จะเข้ามาใช้ระบบ password ให้เข้ารหัสแล้วเก็บ role จะมีแค่ 2 คือ "admin" กับ "staff"
+4.อธิบาย ตารางง่ายๆ 
+    4.1 Location จะอยู่ใน Warehouse
+    4.2 เรากำลังจะเอา SKU กับ batch number ไปผูกกับ Location
+5.authorize จาก frontend จะใช้ jwt
+
+
+front end (StockCountFront) ใช้ react vite + shacdn
+
+1.ต้องการ layout เหมือน dashboard ขอแบบง่ายๆของ shachn เลย
+2.บังคับให้ user ต้อง login ก่อน เสมอ ถึงจะเข้ามาหน้าทำงานได้ ไม่งั้น ก็ไปหน้า register

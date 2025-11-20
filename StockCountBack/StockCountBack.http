@@ -1,0 +1,6 @@
+@StockCountBack_HostAddress = http://localhost:5121
+
+GET {{StockCountBack_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
