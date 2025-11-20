@@ -1,23 +1,83 @@
 @import "tailwindcss";
 
+/* Custom Scrollbar Styles - Auto-hide */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+*:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
 @theme {
   --radius: 0.5rem;
+  
+  /* ALUMET Brand Colors */
+  --color-alumet-orange: #ff6600;
+  --color-alumet-orange-dark: #e55a00;
+  --color-alumet-orange-light: #ff8533;
+  --color-alumet-green: #00a86b;
+  --color-alumet-green-dark: #008557;
+  --color-alumet-green-light: #00c17c;
+  
+  /* Base Colors */
   --color-background: #ffffff;
-  --color-foreground: #0a0a0a;
+  --color-foreground: #1a1a1a;
+  
+  /* Card Colors */
   --color-card: #ffffff;
-  --color-card-foreground: #0a0a0a;
+  --color-card-foreground: #1a1a1a;
+  
+  /* Popover Colors */
   --color-popover: #ffffff;
-  --color-popover-foreground: #0a0a0a;
-  --color-primary: #0a0a0a;
-  --color-primary-foreground: #fafafa;
-  --color-secondary: #f5f5f5;
-  --color-secondary-foreground: #0a0a0a;
+  --color-popover-foreground: #1a1a1a;
+  
+  /* Primary - Orange (ALUMET Brand) */
+  --color-primary: #ff6600;
+  --color-primary-foreground: #ffffff;
+  
+  /* Secondary - Green (ALUMET Brand) */
+  --color-secondary: #00a86b;
+  --color-secondary-foreground: #ffffff;
+  
+  /* Muted Colors */
   --color-muted: #f5f5f5;
   --color-muted-foreground: #737373;
-  --color-accent: #f5f5f5;
-  --color-accent-foreground: #0a0a0a;
+  
+  /* Accent - Light Orange */
+  --color-accent: #fff5eb;
+  --color-accent-foreground: #ff6600;
+  
+  /* Destructive - Red */
   --color-destructive: #dc2626;
+  --color-destructive-foreground: #ffffff;
+  
+  /* Border & Input */
   --color-border: #e5e5e5;
   --color-input: #e5e5e5;
-  --color-ring: #a1a1a1;
+  --color-ring: #ff6600;
 }

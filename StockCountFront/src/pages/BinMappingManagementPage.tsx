@@ -78,17 +78,6 @@ export default function BinMappingManagementPage() {
     return `${warehouse?.whsName || 'N/A'} - ${location.binLocation}`;
   };
 
-  if (!isAdmin) {
-    return (
-      <div className="p-6">
-        <h1 className="text-3xl font-bold mb-6">Bin Mapping Management</h1>
-        <div className="p-4 bg-red-50 text-red-600 rounded-md">
-          คุณไม่มีสิทธิ์เข้าถึงหน้านี้ (เฉพาะ Admin)
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -173,13 +162,15 @@ export default function BinMappingManagementPage() {
                       {mapping.createdAt ? new Date(mapping.createdAt).toLocaleString('th-TH') : '-'}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <Button 
-                        size="sm" 
-                        variant="destructive" 
-                        onClick={() => handleDelete(mapping.id)}
-                      >
-                        ลบ
-                      </Button>
+                      {isAdmin && (
+                        <Button 
+                          size="sm" 
+                          variant="destructive" 
+                          onClick={() => handleDelete(mapping.id)}
+                        >
+                          ลบ
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}

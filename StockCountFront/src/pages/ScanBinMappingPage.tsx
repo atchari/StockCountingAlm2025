@@ -147,7 +147,7 @@ export default function ScanBinMappingPage() {
             </div>
           )}
 
-          <Button type="submit" className="w-full">
+          <Button type="submit" className="w-full bg-[#00a86b] hover:bg-[#008557] text-white">
             บันทึก
           </Button>
         </form>

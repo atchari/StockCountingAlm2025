@@ -39,10 +39,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
+    <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-primary/10 via-white to-secondary/10">
+      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-2xl shadow-2xl border border-gray-100">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">Stock Counting System</h1>
+          <div className="inline-block p-3 bg-primary/10 rounded-xl mb-4">
+            <div className="w-12 h-12 bg-primary rounded-lg"></div>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-800">Stock Counting System</h1>
           <p className="text-gray-600 mt-2">เข้าสู่ระบบ</p>
         </div>
 
@@ -55,7 +58,7 @@ export default function LoginPage() {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
               required
             />
           </div>
@@ -68,24 +71,28 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
               required
             />
           </div>
 
           {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">
+            <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg border border-red-200">
               {error}
             </div>
           )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button 
+            type="submit" 
+            className="w-full bg-primary hover:bg-alumet-orange-dark text-white py-2.5 text-base font-medium"
+            disabled={loading}
+          >
             {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
           </Button>
         </form>
 
-        <div className="text-center text-sm text-gray-600">
-          <p>ผู้ดูแลระบบ: admin / Admin@2025</p>
+        <div className="text-center text-sm text-gray-500 pt-4 border-t">
+          <p>ผู้ดูแลระบบ: <span className="font-mono text-primary">admin / Admin@2025</span></p>
         </div>
       </div>
     </div>

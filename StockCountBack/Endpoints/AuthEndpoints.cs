@@ -15,7 +15,7 @@ public static class AuthEndpoints
         var auth = app.MapGroup("/api/auth");
 
         // Login
-        auth.MapPost("/login", async ([FromBody] LoginRequest request, StockCountDbContext db, IAuthService authService, IConfiguration config) =>
+        auth.MapPost("/login", async (HttpContext context, [FromBody] LoginRequest request, StockCountDbContext db, IAuthService authService, IConfiguration config) =>
         {
             var user = await db.NtfUsers.FirstOrDefaultAsync(u => u.UserName == request.UserName);
             
@@ -38,13 +38,16 @@ public static class AuthEndpoints
                 config["Jwt:Audience"]!
             );
 
+            // Set JWT in HTTP-only cookie
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Strict,
-                Expires = DateTimeOffset.UtcNow.AddDays(7)
+                Secure = false, // Set to true in production with HTTPS
+                SameSite = SameSiteMode.Lax, // Changed from Strict to Lax for better compatibility
+                Expires = DateTimeOffset.UtcNow.AddHours(14)
             };
+
+            context.Response.Cookies.Append("jwt", token, cookieOptions);
 
             var response = new LoginResponse(user.Id, user.UserName!, user.FullName ?? "", user.Role ?? "staff", token);
             
@@ -133,8 +136,11 @@ public static class AuthEndpoints
         .WithName("GetCurrentUser");
 
         // Logout
-        auth.MapPost("/logout", () =>
+        auth.MapPost("/logout", (HttpContext context) =>
         {
+            // Delete JWT cookie
+            context.Response.Cookies.Delete("jwt");
+            
             return Results.Ok(new { message = "Logged out successfully" });
         })
         .RequireAuthorization()

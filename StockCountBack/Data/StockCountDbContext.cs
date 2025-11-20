@@ -13,6 +13,8 @@ public class StockCountDbContext : DbContext
     public DbSet<NtfWhsGroup> NtfWhsGroups { get; set; }
     public DbSet<NtfLocation> NtfLocations { get; set; }
     public DbSet<NtfBinMapping> NtfBinMappings { get; set; }
+    public DbSet<NtfCountPerson> NtfCountPersons { get; set; }
+    public DbSet<NtfFreezeData> NtfFreezeDatas { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -186,3 +186,72 @@ export const userAPI = {
     });
   },
 };
+
+export interface CountPerson {
+  id: number;
+  fullName: string;
+  createdAt: string | null;
+}
+
+export const countPersonAPI = {
+  getAll: async () => {
+    const response = await apiClient.get<CountPerson[]>('/api/count-persons');
+    return response.data;
+  },
+
+  getById: async (id: number) => {
+    const response = await apiClient.get<CountPerson>(`/api/count-persons/${id}`);
+    return response.data;
+  },
+
+  create: async (fullName: string) => {
+    const response = await apiClient.post<CountPerson>('/api/count-persons', { fullName });
+    return response.data;
+  },
+
+  update: async (id: number, fullName: string) => {
+    const response = await apiClient.put<CountPerson>(`/api/count-persons/${id}`, { fullName });
+    return response.data;
+  },
+
+  delete: async (id: number) => {
+    await apiClient.delete(`/api/count-persons/${id}`);
+  },
+};
+
+export interface FreezeData {
+  id: number;
+  whsId: number;
+  sku: string;
+  batchNo: string;
+  qty: number;
+  uom: string;
+  unitPrice: number;
+  createdAt: string | null;
+}
+
+export const freezeDataAPI = {
+  getAll: async (whsId?: number) => {
+    const params = whsId ? { whsId } : {};
+    const response = await apiClient.get<FreezeData[]>('/api/freeze-data', { params });
+    return response.data;
+  },
+
+  getById: async (id: number) => {
+    const response = await apiClient.get<FreezeData>(`/api/freeze-data/${id}`);
+    return response.data;
+  },
+
+  import: async (whsId: number, tsvContent: string) => {
+    const response = await apiClient.post('/api/freeze-data/import', { whsId, tsvContent });
+    return response.data;
+  },
+
+  deleteByWarehouse: async (whsId: number) => {
+    await apiClient.delete(`/api/freeze-data/warehouse/${whsId}`);
+  },
+
+  delete: async (id: number) => {
+    await apiClient.delete(`/api/freeze-data/${id}`);
+  },
+};

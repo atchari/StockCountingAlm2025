@@ -31,11 +31,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             ValidateIssuer = true,
             ValidateAudience = true,
-            ValidateLifetime = true,
+            ValidateLifetime = true, // Strictly validate token expiration
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtSettings["Issuer"],
             ValidAudience = jwtSettings["Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+            ClockSkew = TimeSpan.Zero // No tolerance for expired tokens
         };
 
         // Support JWT from cookie
@@ -54,6 +55,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     context.Token = authHeader.Substring("Bearer ".Length).Trim();
                 }
                 return Task.CompletedTask;
+            },
+            OnAuthenticationFailed = context =>
+            {
+                // If token is expired, return 401 immediately
+                if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+                {
+                    context.Response.Headers["Token-Expired"] = "true";
+                    context.Response.StatusCode = 401;
+                }
+                return Task.CompletedTask;
             }
         };
     });
@@ -68,7 +79,8 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("http://localhost:5173")
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .AllowCredentials();
+              .AllowCredentials()
+              .WithExposedHeaders("X-New-Token", "Token-Expired"); // Expose token headers
     });
 });
 
@@ -102,6 +114,10 @@ using (var scope = app.Services.CreateScope())
 
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
+
+// JWT Auto-refresh middleware
+app.UseMiddleware<StockCountBack.Middleware.JwtRefreshMiddleware>();
+
 app.UseAuthorization();
 
 // Map endpoints
@@ -110,6 +126,8 @@ app.MapWarehouseEndpoints();
 app.MapLocationEndpoints();
 app.MapBinMappingEndpoints();
 app.MapUserEndpoints();
+app.MapCountPersonEndpoints();
+app.MapFreezeDataEndpoints();
 
 // Health check
 app.MapGet("/api/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.Now }));

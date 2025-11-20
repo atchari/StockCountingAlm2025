@@ -19,9 +19,14 @@
 - **TypeScript**
 - **Tailwind CSS v4** - Styling
 - **shadcn/ui** - UI Components
+  - Button, Dialog, Popover
+  - Combobox (searchable dropdown)
+  - Command (cmdk)
 - **React Router v6** - Routing
 - **Redux Toolkit** - State Management
 - **Axios** - HTTP Client
+- **Lucide React** - Icons
+- **Radix UI** - Headless UI primitives
 
 ## โครงสร้างฐานข้อมูล
 
@@ -65,6 +70,27 @@
 - UNIQUE INDEX (binId, sku, batchNo) - ป้องกันซ้ำ
 ```
 
+### ntf_CountPerson
+เก็บข้อมูลผู้นับ Stock
+```
+- id (PK, int)
+- fullName (varchar(150))
+- createdAt (datetime)
+```
+
+### ntf_FreezeData
+เก็บข้อมูล Stock ต้นฉบับก่อนนับ (สำหรับเปรียบเทียบ)
+```
+- id (PK, int)
+- whsId (int) - FK to ntf_WhsGroup
+- sku (varchar(50))
+- batchNo (varchar(50))
+- qty (numeric(15,5))
+- uom (varchar(30)) - หน่วยนับ
+- unitPrice (numeric(15,5))
+- createdAt (datetime)
+```
+
 ## โครงสร้างโปรเจค Backend
 
 ```
@@ -75,15 +101,21 @@ StockCountBack/
 │   ├── NtfUser.cs                      # User Entity
 │   ├── NtfWhsGroup.cs                  # Warehouse Entity
 │   ├── NtfLocation.cs                  # Location Entity
-│   └── NtfBinMapping.cs                # BinMapping Entity
+│   ├── NtfBinMapping.cs                # BinMapping Entity
+│   ├── NtfCountPerson.cs               # CountPerson Entity
+│   └── NtfFreezeData.cs                # FreezeData Entity
 ├── DTOs/
 │   └── ApiDtos.cs                      # Data Transfer Objects
 ├── Services/
-│   ├── AuthService.cs                  # Authentication & Password Service
+│   ├── AuthService.cs                  # Authentication & Password Service (JWT 14h)
 │   └── DatabaseSeeder.cs               # Database Seeding
+├── Middleware/
+│   └── JwtRefreshMiddleware.cs         # JWT Auto-Refresh (< 4h remaining)
 ├── Endpoints/
 │   ├── AuthEndpoints.cs                # /api/auth/*
 │   ├── WarehouseEndpoints.cs           # /api/warehouses/*
+│   ├── CountPersonEndpoints.cs         # /api/count-persons/*
+│   ├── FreezeDataEndpoints.cs          # /api/freeze-data/*
 │   ├── LocationEndpoints.cs            # /api/locations/*
 │   ├── BinMappingEndpoints.cs          # /api/bin-mappings/*
 │   └── UserEndpoints.cs                # /api/users/*
@@ -109,6 +141,10 @@ StockCountFront/
 │   │   ├── ProtectedRoute.tsx          # Route guard
 │   │   └── ui/                         # shadcn components
 │   │       ├── button.tsx
+│   │       ├── combobox.tsx            # Searchable dropdown (select2-like)
+│   │       ├── command.tsx             # Command palette
+│   │       ├── dialog.tsx              # Modal dialogs
+│   │       ├── popover.tsx             # Popover component
 │   │       └── ...
 │   ├── pages/
 │   │   ├── LoginPage.tsx               # หน้า Login
@@ -117,6 +153,8 @@ StockCountFront/
 │   │   ├── WarehouseManagementPage.tsx # จัดการคลัง (Admin)
 │   │   ├── LocationManagementPage.tsx  # จัดการ Location (Admin)
 │   │   ├── BinMappingManagementPage.tsx # ดู/ลบ Mapping (Admin)
+│   │   ├── CountPersonManagementPage.tsx # จัดการผู้นับ (Admin)
+│   │   ├── FreezeDataManagementPage.tsx # จัดการข้อมูลต้นฉบับ + TSV Import (Admin)
 │   │   └── UserManagementPage.tsx      # จัดการผู้ใช้ (Admin)
 │   ├── lib/
 │   │   └── utils.ts                    # Utility functions
@@ -299,6 +337,73 @@ Request:
 #### POST /api/users/{id}/reset-password
 รีเซ็ตรหัสผ่านผู้ใช้
 
+### Count Person (`/api/count-persons`) - Admin Only
+
+#### GET /api/count-persons
+ดึงรายการผู้นับ Stock ทั้งหมด
+
+#### GET /api/count-persons/{id}
+ดึงข้อมูลผู้นับตาม ID
+
+#### POST /api/count-persons
+สร้างผู้นับใหม่
+```json
+Request:
+{
+  "fullName": "John Doe"
+}
+```
+
+#### PUT /api/count-persons/{id}
+แก้ไขข้อมูลผู้นับ
+
+#### DELETE /api/count-persons/{id}
+ลบผู้นับ
+
+### Freeze Data (`/api/freeze-data`) - Admin Only
+
+#### GET /api/freeze-data?whsId={whsId}
+ดึงข้อมูล Freeze Data (filter ตาม warehouse ได้)
+
+#### GET /api/freeze-data/{id}
+ดึงข้อมูล Freeze Data ตาม ID
+
+#### POST /api/freeze-data/import
+**นำเข้าไฟล์ TSV สำหรับคลังที่ระบุ** (แทนที่ข้อมูลเก่าทั้งหมด)
+```json
+Request:
+{
+  "whsId": 1,
+  "tsvContent": "SKU\tBatchNo\tQty\tUom\tUnitPrice\n3012-001\tE7-01\t100.50\tKG\t50.00"
+}
+
+Response:
+{
+  "message": "Import completed",
+  "whsId": 1,
+  "importedCount": 150,
+  "deletedCount": 120,
+  "errors": null
+}
+```
+
+**รูปแบบ TSV:**
+- แถวแรก: Header (skip)
+- คอลัมน์: SKU [TAB] BatchNo [TAB] Qty [TAB] Uom [TAB] UnitPrice
+- ใช้ Tab เป็น delimiter
+
+**การทำงาน:**
+1. ลบข้อมูลเก่าทั้งหมดของคลังนี้
+2. อ่านและ parse TSV content
+3. Insert ข้อมูลใหม่ทั้งหมด
+4. คืนค่าสรุปผลการ import
+
+#### DELETE /api/freeze-data/warehouse/{whsId}
+ลบข้อมูล Freeze Data ทั้งหมดของคลังที่ระบุ
+
+#### DELETE /api/freeze-data/{id}
+ลบข้อมูล Freeze Data เฉพาะรายการที่ระบุ
+
 ## การติดตั้งและรัน
 
 ### Backend
@@ -342,6 +447,8 @@ Frontend จะรันที่ `http://localhost:5173`
 - Authentication System (Login/Register/JWT)
 - Password Hashing (BCrypt)
 - CRUD APIs สำหรับ Warehouse, Location, BinMapping, User
+- **Count Person API** - จัดการผู้นับ Stock
+- **Freeze Data API** - จัดการข้อมูลต้นฉบับ พร้อม TSV Import
 - Scan Label Endpoint พร้อม parser |SKU|batchNo|
 - Duplicate checking
 - Role-based Authorization (admin/staff)
@@ -349,19 +456,34 @@ Frontend จะรันที่ `http://localhost:5173`
 - Removed deprecated WithOpenApi() methods
 
 ✅ Frontend
-- Login Page
-- Protected Routes
+- Login Page (พร้อม gradient background สีแบรนด์)
+- Protected Routes (auto-redirect ถ้าไม่ได้ login)
 - Dashboard Layout with Sidebar
-- Redux State Management
+  - Scrollable sidebar (รองรับเมนูเยอะ)
+  - Active route highlighting
+  - สีส้ม ALUMET gradient
+- Redux State Management (auth state)
 - Axios API Client
+  - JWT Auto-refresh (รับ token ใหม่อัตโนมัติ)
+  - Session expiration handling (alert + redirect)
+  - Token storage in localStorage
 - **Scan Bin Mapping Page** (หน้าหลักสำหรับ Phase 0)
   - Auto-focus & clear pattern
   - Validation & immediate feedback
   - Error handling with recovery
+  - **Searchable Bin Location Dropdown** (Combobox)
+    - ค้นหา location ได้แบบ realtime
+    - รองรับ keyboard navigation
+    - UI สวยงามกว่า select ธรรมดา
 - **Master Data Pages** (Admin only):
   - ✅ Warehouse Management (CRUD)
   - ✅ Bin Location Management (CRUD with filter)
   - ✅ Bin Mapping Management (View/Delete with filters)
+  - ✅ **Count Person Management** (CRUD ผู้นับ Stock)
+  - ✅ **Freeze Data Management** (จัดการข้อมูลต้นฉบับ + TSV Import)
+    - Upload TSV file
+    - แยกคลัง (per warehouse)
+    - Replace old data when re-import
 - **Admin Pages**:
   - ✅ User Management (CRUD + Reset Password)
 
@@ -507,6 +629,41 @@ try {
 +----+------------+---------------------+--------+
 ```
 
+## UI Components
+
+### Combobox Component (Searchable Dropdown)
+**ใช้งานแทน `<select>` ธรรมดาเมื่อมีตัวเลือกจำนวนมาก**
+
+**ฟีเจอร์:**
+- พิมพ์เพื่อค้นหา (fuzzy search)
+- แสดงเครื่องหมาย ✓ ข้างตัวเลือกที่เลือกอยู่
+- รองรับ keyboard navigation (↑↓ เลือก, Enter ยืนยัน, Esc ปิด)
+- Accessible (ARIA compliant)
+- Mobile-friendly
+
+**ตัวอย่างการใช้งาน:**
+```tsx
+import { Combobox } from '@/components/ui/combobox';
+
+<Combobox
+  options={[
+    { value: '1', label: 'D1A-01' },
+    { value: '2', label: 'D1A-02' },
+    { value: '3', label: 'D22C-06' },
+  ]}
+  value={selectedValue}
+  onValueChange={setSelectedValue}
+  placeholder="เลือก Bin Location"
+  searchPlaceholder="ค้นหา location..."
+  emptyText="ไม่พบ location"
+/>
+```
+
+**ใช้ใน:**
+- Scan Bin Mapping Page (เลือก Bin Location)
+- Location Management Page (filter dropdown)
+- Bin Mapping Management Page (filter dropdown)
+
 ### 2. Bin Location Management (`/master/bin-location`)
 **ฟีเจอร์:**
 - ดูรายการ Location ทั้งหมด (Table view)
@@ -580,6 +737,78 @@ Filter: [Warehouse ▼] [Location ▼]
 - การรีเซ็ตรหัสผ่านจะ prompt ให้กรอกรหัสใหม่
 - Role มี 2 แบบ: "admin" และ "staff"
 
+### Count Person Management (`/master/count-person`)
+**ฟีเจอร์:**
+- ดูรายการผู้นับ Stock ทั้งหมด (Table view)
+- เพิ่มผู้นับใหม่ (Inline form)
+- แก้ไขชื่อผู้นับ (Inline edit)
+- ลบผู้นับ
+- Authorization: เฉพาะ admin เท่านั้น
+
+**หน้าตา:**
+```
+เพิ่มผู้นับใหม่: [ชื่อ-นามสกุล________________] [เพิ่ม]
+
++----+------------------+---------------------+--------+
+| ID | ชื่อ-นามสกุล     | วันที่สร้าง        | จัดการ  |
++----+------------------+---------------------+--------+
+| 1  | John Doe         | 20/11/2025 09:00   | แก้ไข ลบ |
+| 2  | Jane Smith       | 20/11/2025 09:05   | แก้ไข ลบ |
++----+------------------+---------------------+--------+
+```
+
+**Use Case:**
+- ใช้สำหรับบันทึกรายชื่อคนที่จะมานับ Stock
+- จะนำไปใช้ใน Phase 1 เพื่อระบุว่าใครเป็นคนนับ
+
+### Freeze Data Management (`/master/freeze-data`)
+**ฟีเจอร์:**
+- เลือกคลัง (Dropdown)
+- Upload ไฟล์ TSV (Tab-Separated Values)
+- แสดงข้อมูลในตาราง พร้อมจำนวนรายการ
+- ลบข้อมูลทั้งหมดของคลัง
+- Authorization: เฉพาะ admin เท่านั้น
+
+**หน้าตา:**
+```
+เลือกคลัง: [WH_MILL ▼]
+
+นำเข้าไฟล์ TSV (Tab-Separated Values)
+[โหลดข้อมูล] [เลือกไฟล์] [ลบทั้งหมด]
+รูปแบบ: SKU [TAB] BatchNo [TAB] Qty [TAB] Uom [TAB] UnitPrice
+
+ข้อมูลคลัง: WH_MILL (150 รายการ)
++----+---------------------------+---------------+--------+--------+----------+---------------------+
+| ID | SKU                       | Batch No      | Qty    | Uom    | UnitPrice| วันที่สร้าง        |
++----+---------------------------+---------------+--------+--------+----------+---------------------+
+| 1  | 3012-001_AN_6063/T5_MILL | E7-01-00001   | 100.50 | KG     | 50.00    | 20/11/2025 10:00   |
+| 2  | 3012-002_AN_6063/T5_MILL | E7-01-00002   | 200.00 | KG     | 50.00    | 20/11/2025 10:00   |
++----+---------------------------+---------------+--------+--------+----------+---------------------+
+```
+
+**การทำงาน:**
+1. เลือกคลังที่ต้องการ import
+2. เลือกไฟล์ .tsv หรือ .txt
+3. ระบบจะ:
+   - ลบข้อมูลเก่าของคลังนี้ทั้งหมด
+   - อ่านและ parse TSV
+   - Insert ข้อมูลใหม่
+   - แสดงสรุปผล (นำเข้าสำเร็จ X รายการ, ลบเก่า Y รายการ)
+4. แสดงข้อมูลในตาราง
+
+**รูปแบบไฟล์ TSV:**
+```tsv
+SKU	BatchNo	Qty	Uom	UnitPrice
+3012-001_AN_6063/T5_MILL	E7-01-00001	100.50	KG	50.00
+3012-002_AN_6063/T5_MILL	E7-01-00002	200.00	KG	50.00
+```
+
+**Use Case:**
+- ใช้สำหรับนำเข้าข้อมูล Stock ต้นฉบับก่อนเริ่มนับ
+- จะนำไปเปรียบเทียบกับยอดนับจริงใน Phase 1
+- แยกคลัง - สามารถ import ทีละคลังได้
+- Update ได้ - ถ้า import ซ้ำจะแทนที่ข้อมูลเก่า
+
 ### เทคนิคสำคัญสำหรับหน้าอื่นๆ ที่มีการ Scan
 
 1. **ใช้ useRef** เพื่อควบคุม focus
@@ -624,13 +853,51 @@ Filter: [Warehouse ▼] [Location ▼]
 
 ## Security Features
 
-- Password เข้ารหัสด้วย BCrypt (cost factor 12)
-- JWT Token Authentication
-- HTTP-only Cookies (จาก Frontend config)
-- Authorization middleware (admin/staff roles)
-- Protected endpoints
+### Authentication & Authorization
+- **Password Hashing**: BCrypt (cost factor 12)
+- **JWT Token Authentication**: 
+  - Token หมดอายุ: **14 ชั่วโมง**
+  - ClockSkew: **Zero** (ไม่มีเวลาผ่อนผัน)
+  - Auto-refresh: ต่ออายุอัตโนมัติเมื่อเหลือเวลาน้อยกว่า 4 ชั่วโมง
+  - Strict expiration: หมดอายุจริง = เด้งกลับหน้า login ทันที
+- **HTTP-only Cookies**: 
+  - Cookie name: `jwt`
+  - HttpOnly: `true` (ป้องกัน JavaScript access)
+  - Secure: `false` (dev), `true` (production)
+  - SameSite: `Lax` (ป้องกัน CSRF)
+  - Expires: 14 hours
+  - ส่งทั้ง cookie และ response body (backward compatibility)
+- **Authorization Middleware**: Role-based (admin/staff)
+- **Protected Endpoints**: ต้อง authenticate ทุก endpoint (ยกเว้น login)
+
+### JWT Auto-Refresh Mechanism
+```
+Timeline:
+├─ 0h ────────────────────── Login (14h token)
+├─ 10h ─────────────────────┐
+│                            │ Token มีอายุเหลือ 4h
+│  [Auto-Refresh Triggered] │ ระบบออก token ใหม่อัตโนมัติ
+├─ 10h ────────────────────── New Token (14h)
+├─ 24h ─────────────────────┐
+│                            │ Token หมดอายุจริง
+│  [Session Expired]        │ เด้ง login ทันที + แสดง alert
+└─ 24h ────────────────────── Redirect to /login
+```
+
+**Backend:**
+- `JwtRefreshMiddleware`: ตรวจสอบและต่ออายุ token
+- `OnAuthenticationFailed`: จับ token หมดอายุ → return 401 + header `Token-Expired: true`
+- `ClockSkew = TimeSpan.Zero`: ไม่ให้เวลาผ่อนผัน
+
+**Frontend:**
+- Axios Interceptor: รับ token ใหม่จาก header `X-New-Token`
+- ตรวจจับ 401 + `Token-Expired` → alert + redirect `/login`
+- อัพเดท token ใน localStorage อัตโนมัติ
+
+### Data Protection
 - Input validation
 - SQL Injection protection (EF Core parameterized queries)
+- CORS whitelist (localhost:5173 only)
 
 ## Database Connection
 
@@ -642,6 +909,38 @@ Filter: [Warehouse ▼] [Location ▼]
   }
 }
 ```
+
+## UI Design System
+
+### Color Palette (ALUMET Brand)
+
+**Primary - Orange**
+- `#ff6600` - Main brand orange
+- `#e55a00` - Dark orange (hover states)
+- `#ff8533` - Light orange (accents)
+
+**Secondary - Green**
+- `#00a86b` - Success green
+- `#008557` - Dark green (hover)
+- `#00c17c` - Light green
+
+**Usage:**
+- Sidebar: Orange gradient background
+- Primary buttons: Orange
+- Success messages: Green
+- Submit/Save buttons: Green
+- Links & highlights: Orange
+
+### Typography
+- Headings: Bold, dark gray
+- Body: Regular, medium gray
+- Labels: Medium weight, dark gray
+
+### Components Styling
+- Rounded corners: `0.5rem`
+- Shadows: Soft, subtle
+- Borders: Light gray
+- Focus rings: Orange (primary color)
 
 ## CORS Configuration
 
