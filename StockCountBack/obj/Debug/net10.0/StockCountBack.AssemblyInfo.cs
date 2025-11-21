@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("StockCountBack")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0c3c1086ad1e9169a3e71625126b22131cad53ad")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+623a590c9b620ae55d433e6ebb4c9828b5db9e86")]
 [assembly: System.Reflection.AssemblyProductAttribute("StockCountBack")]
 [assembly: System.Reflection.AssemblyTitleAttribute("StockCountBack")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
