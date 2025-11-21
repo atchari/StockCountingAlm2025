@@ -230,6 +230,22 @@ export interface FreezeData {
   createdAt: string | null;
 }
 
+export interface Counting {
+  id: number;
+  whsId: number;
+  binId: number | null;
+  sku: string;
+  batchNo: string | null;
+  qty: number;
+  countPersonId: number;
+  scanPersonId: number;
+  scanPersonName?: string;
+  createdAt: string | null;
+  updatedAt?: string | null;
+  updatedBy?: number | null;
+  updatedByName?: string | null;
+}
+
 export const freezeDataAPI = {
   getAll: async (whsId?: number) => {
     const params = whsId ? { whsId } : {};
@@ -253,5 +269,41 @@ export const freezeDataAPI = {
 
   delete: async (id: number) => {
     await apiClient.delete(`/api/freeze-data/${id}`);
+  },
+};
+
+export const countingAPI = {
+  getAll: async (whsId?: number, binId?: number) => {
+    const params: any = {};
+    if (whsId) params.whsId = whsId;
+    if (binId) params.binId = binId;
+    const response = await apiClient.get<Counting[]>('/api/counting', { params });
+    return response.data;
+  },
+
+  getById: async (id: number) => {
+    const response = await apiClient.get<Counting>(`/api/counting/${id}`);
+    return response.data;
+  },
+
+  create: async (whsId: number, binId: number | null, sku: string, batchNo: string | null, qty: number, countPersonId: number) => {
+    const response = await apiClient.post<Counting>('/api/counting', { 
+      whsId, 
+      binId, 
+      sku, 
+      batchNo, 
+      qty, 
+      countPersonId 
+    });
+    return response.data;
+  },
+
+  update: async (id: number, qty: number) => {
+    const response = await apiClient.put<Counting>(`/api/counting/${id}`, { qty });
+    return response.data;
+  },
+
+  delete: async (id: number) => {
+    await apiClient.delete(`/api/counting/${id}`);
   },
 };

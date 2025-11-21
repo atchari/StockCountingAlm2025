@@ -91,6 +91,20 @@
 - createdAt (datetime)
 ```
 
+### ntf_Counting
+เก็บข้อมูลการนับ Stock จริง (Phase 1)
+```
+- id (PK, int)
+- whsId (int) - FK to ntf_WhsGroup
+- binId (int, nullable) - FK to ntf_Location (บางคลังไม่มี location)
+- sku (varchar(50))
+- batchNo (varchar(50), nullable) - บาง SKU ไม่มี batch
+- qty (numeric(15,5))
+- countPersonId (int) - ผู้นับ (FK to ntf_CountPerson)
+- scanPersonId (int) - ผู้ scan (FK to ntf_User)
+- createdAt (datetime)
+```
+
 ## โครงสร้างโปรเจค Backend
 
 ```
@@ -103,7 +117,8 @@ StockCountBack/
 │   ├── NtfLocation.cs                  # Location Entity
 │   ├── NtfBinMapping.cs                # BinMapping Entity
 │   ├── NtfCountPerson.cs               # CountPerson Entity
-│   └── NtfFreezeData.cs                # FreezeData Entity
+│   ├── NtfFreezeData.cs                # FreezeData Entity
+│   └── NtfCounting.cs                  # Counting Entity (Phase 1)
 ├── DTOs/
 │   └── ApiDtos.cs                      # Data Transfer Objects
 ├── Services/
@@ -116,6 +131,7 @@ StockCountBack/
 │   ├── WarehouseEndpoints.cs           # /api/warehouses/*
 │   ├── CountPersonEndpoints.cs         # /api/count-persons/*
 │   ├── FreezeDataEndpoints.cs          # /api/freeze-data/*
+│   ├── CountingEndpoints.cs            # /api/counting/* (Phase 1)
 │   ├── LocationEndpoints.cs            # /api/locations/*
 │   ├── BinMappingEndpoints.cs          # /api/bin-mappings/*
 │   └── UserEndpoints.cs                # /api/users/*
@@ -149,10 +165,11 @@ StockCountFront/
 │   ├── pages/
 │   │   ├── LoginPage.tsx               # หน้า Login
 │   │   ├── DashboardPage.tsx           # หน้า Dashboard (TODO)
-│   │   ├── ScanBinMappingPage.tsx      # หน้าสแกน Bin Mapping (หลัก)
+│   │   ├── ScanBinMappingPage.tsx      # หน้าสแกน Bin Mapping (Phase 0)
+│   │   ├── ScanCountPage.tsx           # หน้าสแกนนับ Stock (Phase 1) ⭐
 │   │   ├── WarehouseManagementPage.tsx # จัดการคลัง (Admin)
 │   │   ├── LocationManagementPage.tsx  # จัดการ Location (Admin)
-│   │   ├── BinMappingManagementPage.tsx # ดู/ลบ Mapping (Admin)
+│   │   ├── BinMappingManagementPage.tsx # ดู/ลบ Mapping
 │   │   ├── CountPersonManagementPage.tsx # จัดการผู้นับ (Admin)
 │   │   ├── FreezeDataManagementPage.tsx # จัดการข้อมูลต้นฉบับ + TSV Import (Admin)
 │   │   └── UserManagementPage.tsx      # จัดการผู้ใช้ (Admin)
@@ -443,34 +460,50 @@ Frontend จะรันที่ `http://localhost:5173`
 
 ## ฟีเจอร์ที่ทำเสร็จแล้ว
 
-✅ Backend
-- Authentication System (Login/Register/JWT)
-- Password Hashing (BCrypt)
+✅ Backend (Phase 0 + Phase 1)
+- Authentication System (Login/Register/JWT with HTTP-only cookies)
+- Password Hashing (BCrypt cost 12)
+- JWT Auto-refresh middleware (14h expiration, refresh < 4h)
+- Session verification on app load
 - CRUD APIs สำหรับ Warehouse, Location, BinMapping, User
 - **Count Person API** - จัดการผู้นับ Stock
 - **Freeze Data API** - จัดการข้อมูลต้นฉบับ พร้อม TSV Import
+- **Counting API** - บันทึกการนับ Stock จริง (Phase 1) ⭐
 - Scan Label Endpoint พร้อม parser |SKU|batchNo|
 - Duplicate checking
 - Role-based Authorization (admin/staff)
 - Database Seeding (admin user)
 - Removed deprecated WithOpenApi() methods
 
-✅ Frontend
+✅ Frontend (Phase 0 + Phase 1)
 - Login Page (พร้อม gradient background สีแบรนด์)
 - Protected Routes (auto-redirect ถ้าไม่ได้ login)
 - Dashboard Layout with Sidebar
-  - Scrollable sidebar (รองรับเมนูเยอะ)
+  - Scrollable sidebar (auto-hide scrollbar)
   - Active route highlighting
   - สีส้ม ALUMET gradient
-- Redux State Management (auth state)
+- Redux State Management
+  - Auth state with user restore from localStorage
+  - Session verification on app load (/api/auth/me)
+  - Loading state during verification
 - Axios API Client
   - JWT Auto-refresh (รับ token ใหม่อัตโนมัติ)
   - Session expiration handling (alert + redirect)
-  - Token storage in localStorage
-- **Scan Bin Mapping Page** (หน้าหลักสำหรับ Phase 0)
+  - Token storage: HTTP-only cookie + localStorage
+  - withCredentials: true for cookie support
+- **Scan Bin Mapping Page** (Phase 0)
   - Auto-focus & clear pattern
   - Validation & immediate feedback
   - Error handling with recovery
+- **Scan Count Page** (Phase 1) ⭐
+  - Scan Warehouse/Location จาก QR มุมขวาบน
+  - เลือกผู้นับจาก dropdown
+  - Scan SKU/Batch จาก Data Matrix
+  - กรอกจำนวนและบันทึก
+  - แสดงตารางรายการที่นับแล้วแบบ real-time
+  - แก้ไขจำนวนแบบ inline editing
+  - Reset flow เพื่อเริ่มใบใหม่
+  - รองรับกรณีไม่มี Location/BatchNo
   - **Searchable Bin Location Dropdown** (Combobox)
     - ค้นหา location ได้แบบ realtime
     - รองรับ keyboard navigation
@@ -808,6 +841,209 @@ SKU	BatchNo	Qty	Uom	UnitPrice
 - จะนำไปเปรียบเทียบกับยอดนับจริงใน Phase 1
 - แยกคลัง - สามารถ import ทีละคลังได้
 - Update ได้ - ถ้า import ซ้ำจะแทนที่ข้อมูลเก่า
+
+---
+
+## Phase 1: Scan Count System (หน้าจอนับ Stock จริง) ⭐
+
+### Scan Count Page (`/scan-count`)
+
+หน้าหลักสำหรับการนับ Stock จริง ตาม Stock Count Sheet ที่พิมพ์มา
+
+**ฟีเจอร์:**
+- Scan Warehouse/Location จาก QR Code มุมขวาบน
+- เลือกผู้นับจาก Dropdown (ระบุว่าใครเป็นคนนับมา)
+- Scan SKU/Batch จาก Data Matrix แต่ละรายการ
+- กรอกจำนวนที่นับได้จริง
+- บันทึกและแสดงรายการที่นับแล้วแบบ real-time
+- แก้ไขจำนวนแบบ inline editing
+- Reset flow เพื่อเริ่มใบใหม่
+
+**Flow การใช้งาน:**
+
+```
+1. Scan QR Code มุมขวาบน
+   ├─> รูปแบบ: |WH_MILL|D1B-02|
+   ├─> Parse: Warehouse + Location
+   └─> แสดงชื่อคลัง/Location ที่เลือก
+
+2. เลือกผู้นับ (Count Person)
+   └─> Dropdown แสดงรายชื่อจาก ntf_CountPerson
+
+3. Scan SKU/Batch (Data Matrix)
+   ├─> รูปแบบ: |3012-001_AN_6063/T5_MILL|E7-01-00001|
+   ├─> Parse: SKU + Batch Number
+   └─> Auto-focus ไปที่ช่องจำนวน
+
+4. กรอกจำนวน (Quantity)
+   └─> พิมพ์ตัวเลข (รองรับทศนิยม)
+
+5. กดปุ่ม "บันทึก"
+   ├─> บันทึกลง ntf_Counting
+   ├─> Reset SKU/Batch/Qty
+   ├─> Auto-focus กลับไปที่ช่อง Scan SKU
+   └─> Reload ตารางด้านล่าง
+
+6. เมื่อจบใบ กด "Reset ใบใหม่"
+   └─> Reset ทุกอย่าง กลับไป step 1
+```
+
+**หน้าตา UI:**
+
+```
+╔══════════════════════════════════════════════════════════════════╗
+║  Scan ใบนับ Stock                       [Reset ใบใหม่]          ║
+╠══════════════════════════════════════════════════════════════════╣
+║  1. Scan Warehouse & Location (มุมขวาบน)                        ║
+║  ┌────────────────────────────────────────────────────────────┐  ║
+║  │ Scan รหัส QR มุมขวาบน                                       │  ║
+║  │ [_____________________________________________] (font-mono)  │  ║
+║  │ รูปแบบ: |Warehouse|Location|                                │  ║
+║  └────────────────────────────────────────────────────────────┘  ║
+║  ✓ คลัง: WH_MILL - Location: D1B-02                             ║
+╠══════════════════════════════════════════════════════════════════╣
+║  2. เลือกผู้นับ                                                  ║
+║  ┌────────────────────────────────────────────────────────────┐  ║
+║  │ [นาย สมชาย ใจดี                        ▼]                  │  ║
+║  └────────────────────────────────────────────────────────────┘  ║
+╠══════════════════════════════════════════════════════════════════╣
+║  3. Scan SKU & กรอกจำนวน                                         ║
+║  ┌──────────────────────┬───────────────┬───────────────┐        ║
+║  │ Scan SKU             │ SKU           │ Batch No      │        ║
+║  │ [Scan |SKU|Batch|]   │ 3012-001...   │ E7-01-00001   │        ║
+║  └──────────────────────┴───────────────┴───────────────┘        ║
+║  ┌──────────────────────────────┐  ┌─────────────┐              ║
+║  │ จำนวน: [100.50_____________] │  │  [บันทึก]   │              ║
+║  └──────────────────────────────┘  └─────────────┘              ║
+╠══════════════════════════════════════════════════════════════════╣
+║  รายการที่นับแล้ว: WH_MILL - D1B-02 (5 รายการ)                  ║
+║  ┌─────┬──────────────────┬─────────┬─────┬────────┬──────────┐ ║
+║  │ ID  │ SKU              │ Batch   │ Qty │ ผู้นับ │ [แก้ไข]  │ ║
+║  ├─────┼──────────────────┼─────────┼─────┼────────┼──────────┤ ║
+║  │ 101 │ 3012-001_AN...   │ E7-...  │ 100 │ สมชาย  │ [แก้ไข]  │ ║
+║  │ 102 │ 3012-002_AN...   │ E7-...  │ 200 │ สมชาย  │ [แก้ไข]  │ ║
+║  └─────┴──────────────────┴─────────┴─────┴────────┴──────────┘ ║
+╚══════════════════════════════════════════════════════════════════╝
+```
+
+**UI/UX Improvements (Phase 1.1):**
+
+1. **ใช้ปุ่มแทน Enter Key**
+   - ช่อง Scan Warehouse/Location → มีปุ่ม "ยืนยันคลัง"
+   - ช่อง Scan SKU → มีปุ่ม "Scan"
+   - ช่องจำนวน → ปิดการทำงาน Enter key
+   - ป้องกันการ submit โดยไม่ตั้งใจ
+
+2. **Smart Focus Management**
+   - **Error Case**: Focus กลับไปที่ textbox เดิมที่เกิด error
+     - Warehouse error → focus ที่ช่อง Warehouse
+     - SKU error → focus ที่ช่อง SKU
+     - ให้ผู้ใช้แก้ไขได้ทันที
+   - **Success Case**: Focus ไปขั้นตอนถัดไป
+     - Warehouse success → ไม่ auto-focus (ให้เลือก Count Person)
+     - SKU success → focus ที่ช่องจำนวน
+     - Save success → แสดง sticker 1.5 วินาที → clear → focus กลับ SKU
+   - Flow ราบรื่น ไม่ต้องคลิกเอง
+
+3. **State Persistence & Auto-Reload**
+   - ระบบจดจำ Warehouse/Location เมื่อ scan แล้ว
+   - เมื่อกลับมา scan |Warehouse|Location| เดิมอีกครั้ง:
+     - โหลดรายการที่เคยแสกนมาแสดงอัตโนมัติ
+     - ไม่ต้องเริ่มต้นใหม่ สามารถเพิ่มรายการต่อได้เลย
+   - Use Case: พนักงานนับเจอของเพิ่ม กลับมานับที่ Location เดิม
+   - Implementation: useEffect ติดตาม selectedWhsId, selectedBinId, selectedCountPersonId
+
+4. **Duplicate Check Early (SKU Scan)**
+   - เช็คซ้ำทันทีที่ scan SKU (ก่อนกรอกจำนวน)
+   - ถ้าซ้ำ → แสดง error + clear + focus กลับ SKU ทันที
+   - ประหยัดเวลา ไม่ต้องรอกรอกจำนวนแล้วค่อยรู้ว่าซ้ำ
+
+5. **Unique Constraint Validation**
+   - ตรวจสอบ SKU + Batch ต่อ Warehouse (ห้ามซ้ำ)
+   - Frontend: เช็คทั้งตอน scan SKU และ ตอน submit
+   - Backend: Unique Index + Duplicate check + Conflict response (409)
+   - แสดง error message พร้อม ID ของรายการที่ซ้ำ
+
+6. **Sticker-Style Messages**
+   - Success: `✅ บันทึกสำเร็จ! SKU: xxx | Batch: xxx | จำนวน: xxx`
+     - สีเขียวอ่อน, border หนา, shadow, font ใหญ่
+     - แสดง 1.5 วินาที แล้ว clear อัตโนมัติ
+   - Error: `❌ ซ้ำ! SKU: xxx Batch: xxx มีในระบบแล้ว (ID: xxx)`
+     - สีแดงอ่อน, border หนา, shadow, font ใหญ่
+   - เด่นชัด เห็นง่าย สไตล์ sticker
+
+**Validation Rules:**
+
+1. **Warehouse/Location Format**: ต้องเริ่มด้วย `|`
+   - ถ้าไม่ใช่ → แสดง error และ reset ช่อง
+   - Warehouse ต้องมี → หา ID จากชื่อ
+   - Location ไม่บังคับ → ถ้าไม่มีปล่อย null
+
+2. **SKU/Batch Format**: ต้องเริ่มด้วย `|`
+   - ถ้าไม่ใช่ → แสดง error และ reset ช่อง (ไม่ reset Warehouse)
+   - SKU ต้องมี → ดึงจาก column 0
+   - Batch ไม่บังคับ → ดึงจาก column 1 (ถ้าไม่มีปล่อย null)
+
+3. **Quantity**: ต้องเป็นตัวเลข > 0
+
+4. **Count Person**: ต้องเลือกก่อนสแกน SKU
+
+5. **Duplicate Check**: 
+   - ต้องไม่ซ้ำ SKU + Batch ในคลังเดียวกัน
+   - ตรวจสอบทั้ง Frontend และ Backend
+   - แสดง error พร้อม ID ของรายการเดิม
+
+**API Endpoint:**
+
+```
+POST /api/counting
+{
+  "whsId": 1,
+  "binId": 25,  // nullable
+  "sku": "3012-001_AN_6063/T5_MILL",
+  "batchNo": "E7-01-00001",  // nullable
+  "qty": 100.50,
+  "countPersonId": 5
+}
+
+Response (Success - 201):
+{
+  "id": 123,
+  "whsId": 1,
+  "binId": 25,
+  "sku": "3012-001_AN_6063/T5_MILL",
+  "batchNo": "E7-01-00001",
+  "qty": 100.50,
+  "countPersonId": 5,
+  "scanPersonId": 1,  // จาก JWT token
+  "createdAt": "2025-11-20T15:30:00"
+}
+
+Response (Duplicate - 409):
+{
+  "error": "SKU '3012-001_AN_6063/T5_MILL' Batch 'E7-01-00001' มีในระบบแล้ว (ID: 99)"
+}
+```
+
+**Database Constraints:**
+- Unique Index: `(whsId, sku, batchNo)` - ป้องกันซ้ำระดับ database
+- Nullable: `binId`, `batchNo` - รองรับกรณีไม่มีข้อมูล
+
+**Use Case:**
+- ใช้เวลานับ Stock จริง ณ จุดเก็บของ
+- พนักงานถือ Scanner เดินไปตาม Stock Count Sheet
+- Scan QR มุมขวาบน → เลือกผู้นับ → Scan แต่ละรายการ → กรอกจำนวน
+- ข้อมูลจะถูกบันทึกแบบ real-time เข้า Database
+- สามารถแก้ไขจำนวนได้ทันที ถ้านับผิด
+- เมื่อจบ 1 ใบ กด Reset เพื่อไปใบถัดไป
+
+**หมายเหตุ:**
+- `scanPersonId` ดึงมาจาก User ที่ login อยู่ (JWT claim)
+- `countPersonId` คือคนที่ไปนับมา (เลือกจาก dropdown)
+- รองรับ Warehouse ที่ไม่มี Location (binId = null)
+- รองรับ SKU ที่ไม่มี Batch Number (batchNo = null)
+
+---
 
 ### เทคนิคสำคัญสำหรับหน้าอื่นๆ ที่มีการ Scan
 

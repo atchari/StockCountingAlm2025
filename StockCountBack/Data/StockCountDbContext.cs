@@ -15,6 +15,7 @@ public class StockCountDbContext : DbContext
     public DbSet<NtfBinMapping> NtfBinMappings { get; set; }
     public DbSet<NtfCountPerson> NtfCountPersons { get; set; }
     public DbSet<NtfFreezeData> NtfFreezeDatas { get; set; }
+    public DbSet<NtfCounting> NtfCountings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -29,6 +30,12 @@ public class StockCountDbContext : DbContext
         modelBuilder.Entity<NtfBinMapping>(entity =>
         {
             entity.HasIndex(e => new { e.BinId, e.Sku, e.BatchNo }).IsUnique();
+        });
+
+        modelBuilder.Entity<NtfCounting>(entity =>
+        {
+            // Unique constraint: SKU + BatchNo per Warehouse (not per location)
+            entity.HasIndex(e => new { e.WhsId, e.Sku, e.BatchNo }).IsUnique();
         });
     }
 }

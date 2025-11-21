@@ -25,3 +25,20 @@ public record CreateCountPersonRequest(string FullName);
 public record FreezeDataDto(int Id, int WhsId, string Sku, string BatchNo, decimal Qty, string Uom, decimal UnitPrice, DateTime? CreatedAt);
 public record CreateFreezeDataRequest(int WhsId, string Sku, string BatchNo, decimal Qty, string Uom, decimal UnitPrice);
 public record ImportFreezeDataRequest(int WhsId, string TsvContent);
+
+public record CountingDto(
+    int Id, 
+    int WhsId, 
+    int? BinId, 
+    string Sku, 
+    string? BatchNo, 
+    decimal Qty, 
+    int CountPersonId, 
+    int ScanPersonId, 
+    string? ScanPersonName,
+    DateTime? CreatedAt,
+    DateTime? UpdatedAt,
+    int? UpdatedBy,
+    string? UpdatedByName);
+public record CreateCountingRequest(int WhsId, int? BinId, string Sku, string? BatchNo, decimal Qty, int CountPersonId);
+public record UpdateCountingRequest(decimal Qty);
