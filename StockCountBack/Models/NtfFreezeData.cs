@@ -14,15 +14,17 @@ public class NtfFreezeData
     [Required]
     public int WhsId { get; set; }
 
+    [Column("binId")]
+    public int? BinId { get; set; }
+
     [Column("sku")]
     [Required]
     [MaxLength(50)]
     public string Sku { get; set; } = string.Empty;
 
     [Column("batchNo")]
-    [Required]
     [MaxLength(50)]
-    public string BatchNo { get; set; } = string.Empty;
+    public string? BatchNo { get; set; }
 
     [Column("qty")]
     [Required]

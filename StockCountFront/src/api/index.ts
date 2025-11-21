@@ -307,3 +307,69 @@ export const countingAPI = {
     await apiClient.delete(`/api/counting/${id}`);
   },
 };
+
+// Dashboard API
+export interface DashboardOverall {
+  totalFreezeItems: number;
+  totalCountedItems: number;
+  progressPercentage: number;
+  status: string;
+}
+
+export interface DashboardWarehouse {
+  whsId: number;
+  whsName: string;
+  totalItems: number;
+  countedItems: number;
+  varianceItems: number;
+  progressPercentage: number;
+  totalLocations: number;
+  countedLocations: number;
+  status: string;
+}
+
+export interface DashboardStatistics {
+  overall: DashboardOverall;
+  warehouses: DashboardWarehouse[];
+}
+
+export interface LocationStat {
+  binId: number;
+  binLocation: string;
+  totalItems: number;
+  countedItems: number;
+  varianceItems: number;
+  progressPercentage: number;
+  status: string;
+}
+
+export interface VarianceDetail {
+  sku: string;
+  batchNo: string | null;
+  binLocation: string;
+  freezeQty: number;
+  countQty: number;
+  variance: number;
+  variancePercentage: number;
+}
+
+export interface WarehouseDetail {
+  warehouse: {
+    whsId: number;
+    whsName: string;
+  };
+  locations: LocationStat[];
+  variances: VarianceDetail[];
+}
+
+export const dashboardAPI = {
+  getStatistics: async () => {
+    const response = await apiClient.get<DashboardStatistics>('/api/dashboard/statistics');
+    return response.data;
+  },
+
+  getWarehouseDetail: async (whsId: number) => {
+    const response = await apiClient.get<WarehouseDetail>(`/api/dashboard/warehouse/${whsId}`);
+    return response.data;
+  },
+};

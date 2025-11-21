@@ -129,6 +129,7 @@ app.MapUserEndpoints();
 app.MapCountPersonEndpoints();
 app.MapFreezeDataEndpoints();
 app.MapCountingEndpoints();
+app.MapDashboardEndpoints();
 
 // Health check
 app.MapGet("/api/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.Now }));
