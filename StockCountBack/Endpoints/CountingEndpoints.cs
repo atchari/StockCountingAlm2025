@@ -151,7 +151,7 @@ public static class CountingEndpoints
                 Qty = request.Qty,
                 CountPersonId = request.CountPersonId,
                 ScanPersonId = scanPersonId,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             };
 
             db.NtfCountings.Add(counting);
@@ -206,7 +206,7 @@ public static class CountingEndpoints
                 return Results.NotFound(new { error = "Counting record not found" });
 
             counting.Qty = request.Qty;
-            counting.UpdatedAt = DateTime.Now;
+            counting.UpdatedAt = DateTime.UtcNow;
             counting.UpdatedBy = updatedBy;
             await db.SaveChangesAsync();
 

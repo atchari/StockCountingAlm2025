@@ -1,0 +1,6 @@
+ในส่วนนี้เป็นการทดลองก่อน ยังไม่ต้องยุ่งกับการ update project-detail.md , user-manual.md
+
+1.จาก project-detail.md อยากให้ทำ mobile app (StockCountMobile)
+2.ฟังก์ชั่น เพื่อใช้คล้ายกับ web front end (StockCountFront)
+3.ใช้ react native (expo) ในการพัฒนา ตั้ง project เรียบร้อย
+4.theme สี ใช้เหมือน frontend เลย

@@ -16,7 +16,7 @@ public static class DatabaseSeeder
                 UserPassword = authService.HashPassword("Admin@2025"),
                 FullName = "System Administrator",
                 Role = "admin",
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             };
 
             dbContext.NtfUsers.Add(adminUser);

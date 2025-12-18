@@ -105,7 +105,7 @@ public static class FreezeDataEndpoints
                             Qty = decimal.Parse(columns[2].Trim(), CultureInfo.InvariantCulture),
                             Uom = columns.Length > 3 ? columns[3].Trim() : "",
                             UnitPrice = columns.Length > 4 ? decimal.Parse(columns[4].Trim(), CultureInfo.InvariantCulture) : 0,
-                            CreatedAt = DateTime.Now
+                            CreatedAt = DateTime.UtcNow
                         };
 
                         db.NtfFreezeDatas.Add(freezeData);

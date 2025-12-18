@@ -42,7 +42,7 @@ public static class CountPersonEndpoints
             var person = new NtfCountPerson
             {
                 FullName = request.FullName,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             };
 
             db.NtfCountPersons.Add(person);

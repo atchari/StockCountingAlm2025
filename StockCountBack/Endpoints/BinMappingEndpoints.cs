@@ -74,7 +74,7 @@ public static class BinMappingEndpoints
                 Sku = sku,
                 BatchNo = batchNo,
                 UserId = userId,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             };
 
             db.NtfBinMappings.Add(mapping);
@@ -109,7 +109,7 @@ public static class BinMappingEndpoints
                 Sku = request.Sku,
                 BatchNo = request.BatchNo,
                 UserId = userId,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             };
 
             db.NtfBinMappings.Add(mapping);

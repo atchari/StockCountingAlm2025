@@ -45,7 +45,7 @@ public static class LocationEndpoints
             {
                 WhsId = request.WhsId,
                 BinLocation = request.BinLocation,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             };
 
             db.NtfLocations.Add(location);

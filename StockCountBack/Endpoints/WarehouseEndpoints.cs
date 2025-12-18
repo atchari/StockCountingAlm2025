@@ -39,7 +39,7 @@ public static class WarehouseEndpoints
             var warehouse = new NtfWhsGroup
             {
                 WhsName = request.WhsName,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             };
 
             db.NtfWhsGroups.Add(warehouse);

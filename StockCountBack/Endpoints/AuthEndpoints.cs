@@ -70,7 +70,7 @@ public static class AuthEndpoints
                 UserPassword = authService.HashPassword(request.Password),
                 FullName = request.FullName,
                 Role = request.Role,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             };
 
             db.NtfUsers.Add(newUser);
