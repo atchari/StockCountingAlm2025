@@ -76,7 +76,19 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        // Read allowed origins from configuration (appsettings.json)
+        var allowedOrigins =
+            builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+            ?? new string[]
+            {
+                        "http://localhost:5173",
+                        "http://localhost:5174",
+                        "http://localhost:5179",
+                        "https://almdc.alumetgroup.com:5187",
+                        "http://localhost:3000"
+            };
+
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials()
@@ -97,12 +109,12 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<StockCountDbContext>();
     var authService = scope.ServiceProvider.GetRequiredService<IAuthService>();
-    
+
     try
     {
         // Ensure database is created
         dbContext.Database.EnsureCreated();
-        
+
         // Seed admin user
         await DatabaseSeeder.SeedAdminUser(dbContext, authService);
     }

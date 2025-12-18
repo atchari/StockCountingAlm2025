@@ -43,7 +43,7 @@ services:
       - backend
     networks:
       - stockcount-network
-    environment:
+    # environment:
       # ถ้า frontend ต้องการ API URL ในตอน build
       # - VITE_API_URL=http://localhost:5000
     healthcheck:
