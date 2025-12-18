@@ -9,6 +9,8 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+RUN npm install -g npm@11.7.0
+
 # Build the application
 RUN npm run build
 

@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { countingAPI, countPersonAPI, warehouseAPI, locationAPI } from '@/api';
-import type { Counting, CountPerson, Warehouse, Location } from '@/api';
-import { useAppSelector } from '@/redux/hooks';
+import type { Counting, CountPerson, Warehouse } from '@/api';
 
 export default function ScanCountPage() {
   // State for warehouse & location

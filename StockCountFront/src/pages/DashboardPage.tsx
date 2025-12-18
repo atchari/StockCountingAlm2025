@@ -11,7 +11,7 @@ export default function DashboardPage() {
   const [statistics, setStatistics] = useState<DashboardStatistics | null>(null);
   const [warehouseDetail, setWarehouseDetail] = useState<WarehouseDetail | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
-  const [selectedWhsId, setSelectedWhsId] = useState<number | null>(null);
+  const [, setSelectedWhsId] = useState<number | null>(null);
 
   useEffect(() => {
     loadStatistics();
