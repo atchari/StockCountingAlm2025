@@ -173,15 +173,32 @@ public static class DashboardEndpoints
 
             locationStats = locationStats.OrderBy(l => l.BinLocation).ToList();
 
-            // Variance details (items with quantity mismatch) using LINQ
-            var freezeDataWithCounting = await db.NtfFreezeDatas
+            // Variance details (items with quantity mismatch)
+            // Load data separately to handle nullable fields properly
+            var allFreeze = await db.NtfFreezeDatas
                 .Where(f => f.WhsId == whsId)
-                .Join(db.NtfCountings,
-                    f => new { f.WhsId, f.BinId, f.Sku, f.BatchNo },
-                    c => new { c.WhsId, c.BinId, c.Sku, c.BatchNo },
-                    (f, c) => new { Freeze = f, Count = c })
-                .Where(x => x.Freeze.Qty != x.Count.Qty)
                 .ToListAsync();
+            
+            var allCountings = await db.NtfCountings
+                .Where(c => c.WhsId == whsId)
+                .ToListAsync();
+            
+            // Join in memory to avoid nullable issues
+            var freezeDataWithCounting = (from f in allFreeze
+                                         join c in allCountings
+                                         on new { 
+                                             f.WhsId, 
+                                             BinId = f.BinId ?? 0, 
+                                             f.Sku, 
+                                             BatchNo = f.BatchNo ?? "" 
+                                         } equals new { 
+                                             c.WhsId, 
+                                             BinId = c.BinId ?? 0, 
+                                             c.Sku, 
+                                             BatchNo = c.BatchNo ?? "" 
+                                         }
+                                         where f.Qty != c.Qty
+                                         select new { Freeze = f, Count = c }).ToList();
 
             var varianceDetails = new List<VarianceDetailResult>();
 
