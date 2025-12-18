@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # Backend Service
+  backend:
+    build:
+      context: ./StockCountBack
+      dockerfile: Dockerfile
+    container_name: stockcount-backend
+    restart: unless-stopped
+    ports:
+      - "5001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      # Database connection - ปรับตามการตั้งค่าจริงของคุณ
+      - ConnectionStrings__AlmSqlServer=Server=your-db-server;Database=StockCountDB;User Id=your-user;Password=your-password;TrustServerCertificate=True;
+      # JWT Settings - ควรเก็บใน secrets ในการใช้งานจริง
+      - Jwt__SecretKey=your-secret-key-here-at-least-32-characters-long
+      - Jwt__Issuer=StockCountAPI
+      - Jwt__Audience=StockCountClient
+      - Jwt__ExpirationMinutes=60
+      - Jwt__RefreshExpirationMinutes=10080
+    networks:
+      - stockcount-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./StockCountFront
+      dockerfile: Dockerfile
+    container_name: stockcount-frontend
+    restart: unless-stopped
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+    networks:
+      - stockcount-network
+    environment:
+      # ถ้า frontend ต้องการ API URL ในตอน build
+      # - VITE_API_URL=http://localhost:5000
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Optional: SQL Server Database (ถ้าต้องการรัน database ใน Docker ด้วย)
+  # database:
+  #   image: mcr.microsoft.com/mssql/server:2022-latest
+  #   container_name: stockcount-database
+  #   restart: unless-stopped
+  #   ports:
+  #     - "1433:1433"
+  #   environment:
+  #     - ACCEPT_EULA=Y
+  #     - SA_PASSWORD=YourStrong@Passw0rd
+  #     - MSSQL_PID=Express
+  #   volumes:
+  #     - mssql-data:/var/opt/mssql
+  #   networks:
+  #     - stockcount-network
+
+networks:
+  stockcount-network:
+    driver: bridge
+
+# volumes:
+#   mssql-data:
