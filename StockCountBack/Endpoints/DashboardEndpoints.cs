@@ -195,7 +195,7 @@ public static class DashboardEndpoints
                 varianceDetails.Add(new VarianceDetailResult
                 {
                     Sku = item.Freeze.Sku,
-                    BatchNo = item.Freeze.BatchNo,
+                    BatchNo = item.Freeze.BatchNo ?? string.Empty,
                     BinLocation = binLocation,
                     FreezeQty = item.Freeze.Qty,
                     CountQty = item.Count.Qty,

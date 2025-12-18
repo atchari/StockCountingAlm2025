@@ -92,7 +92,7 @@ export default function LoginPage() {
         </form>
 
         <div className="text-center text-sm text-gray-500 pt-4 border-t">
-          <p>ผู้ดูแลระบบ: <span className="font-mono text-primary">admin / Admin@2025</span></p>
+          {/* <p>ผู้ดูแลระบบ: <span className="font-mono text-primary">admin / Admin@2025</span></p> */}
         </div>
       </div>
     </div>
