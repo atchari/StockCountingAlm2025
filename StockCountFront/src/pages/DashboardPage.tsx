@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import type { DashboardStatistics, WarehouseDetail, VarianceDetail } from '../api';
 import { dashboardAPI } from '../api';
 import { Button } from '../components/ui/button';
-import { ChevronLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Clock, Package, X, Filter } from 'lucide-react';
+import { ChevronLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Clock, Package, X, Filter, ListFilter } from 'lucide-react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -14,6 +14,7 @@ import {
 } from '@tanstack/react-table';
 
 type ViewMode = 'overview' | 'warehouse';
+type DisplayMode = 'all' | 'variance';
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -22,6 +23,7 @@ export default function DashboardPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
   const [, setSelectedWhsId] = useState<number | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('variance');
   const [sorting, setSorting] = useState<SortingState>([]);
 
   useEffect(() => {
@@ -47,6 +49,7 @@ export default function DashboardPage() {
       setWarehouseDetail(data);
       setSelectedWhsId(whsId);
       setSelectedLocation(null); // Reset filter
+      setDisplayMode('variance'); // Reset to variance mode
       setViewMode('warehouse');
     } catch (error) {
       console.error('Failed to load warehouse detail:', error);
@@ -60,6 +63,7 @@ export default function DashboardPage() {
     setWarehouseDetail(null);
     setSelectedWhsId(null);
     setSelectedLocation(null);
+    setDisplayMode('variance');
   };
 
   const getStatusIcon = (status: string) => {
@@ -143,12 +147,17 @@ export default function DashboardPage() {
     []
   );
 
-  // Filtered variances based on selected location
+  // Filtered variances based on selected location and display mode
   const filteredVariances = useMemo(() => {
     if (!warehouseDetail) return [];
-    if (!selectedLocation) return warehouseDetail.variances;
-    return warehouseDetail.variances.filter(v => v.binLocation === selectedLocation);
-  }, [warehouseDetail, selectedLocation]);
+    
+    const sourceData = displayMode === 'all' 
+      ? warehouseDetail.allCountedItems 
+      : warehouseDetail.variances;
+    
+    if (!selectedLocation) return sourceData;
+    return sourceData.filter(v => v.binLocation === selectedLocation);
+  }, [warehouseDetail, selectedLocation, displayMode]);
 
   // TanStack Table instance
   const table = useReactTable({
@@ -488,26 +497,55 @@ export default function DashboardPage() {
 
         {/* Variance Details */}
         {filteredVariances.length > 0 && (
-          <div className="bg-red-50 p-6 rounded-lg border-2 border-red-200">
+          <div className={`p-6 rounded-lg border-2 ${displayMode === 'variance' ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold flex items-center gap-2 text-red-700">
-                <AlertTriangle className="w-6 h-6" />
-                รายการที่มียอดไม่ตรง (ต้องตรวจสอบ)
+              <h2 className={`text-2xl font-bold flex items-center gap-2 ${displayMode === 'variance' ? 'text-red-700' : 'text-blue-700'}`}>
+                {displayMode === 'variance' ? (
+                  <>
+                    <AlertTriangle className="w-6 h-6" />
+                    รายการที่มียอดไม่ตรง (ต้องตรวจสอบ)
+                  </>
+                ) : (
+                  <>
+                    <ListFilter className="w-6 h-6" />
+                    รายการที่นับแล้วทั้งหมด
+                  </>
+                )}
                 {selectedLocation && (
                   <span className="text-sm font-normal text-gray-600">
                     - {selectedLocation}
                   </span>
                 )}
               </h2>
-              {selectedLocation && (
-                <span className="text-sm text-gray-600">
-                  แสดง {filteredVariances.length} รายการจาก {warehouseDetail.variances.length} รายการทั้งหมด
-                </span>
-              )}
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setDisplayMode('variance')}
+                  variant={displayMode === 'variance' ? 'default' : 'outline'}
+                  size="sm"
+                >
+                  <AlertTriangle className="w-4 h-4 mr-1" />
+                  เฉพาะที่ไม่ตรง ({warehouseDetail.variances.length})
+                </Button>
+                <Button
+                  onClick={() => setDisplayMode('all')}
+                  variant={displayMode === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                >
+                  <ListFilter className="w-4 h-4 mr-1" />
+                  ทั้งหมด ({warehouseDetail.allCountedItems.length})
+                </Button>
+              </div>
             </div>
-            <p className="text-sm text-gray-600 mb-4">
-              รายการที่ยอดนับไม่ตรงกับข้อมูล Freeze - ควรให้ Auditor ตรวจสอบและแก้ไข
-            </p>
+            {selectedLocation && (
+              <p className="text-sm text-gray-600 mb-4">
+                แสดง {filteredVariances.length} รายการจาก {displayMode === 'all' ? warehouseDetail.allCountedItems.length : warehouseDetail.variances.length} รายการทั้งหมด
+              </p>
+            )}
+            {!selectedLocation && displayMode === 'variance' && (
+              <p className="text-sm text-gray-600 mb-4">
+                รายการที่ยอดนับไม่ตรงกับข้อมูล Freeze - ควรให้ Auditor ตรวจสอบและแก้ไข
+              </p>
+            )}
             <div className="bg-white rounded-lg shadow overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">

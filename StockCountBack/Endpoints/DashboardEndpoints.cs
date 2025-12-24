@@ -18,10 +18,10 @@ public static class DashboardEndpoints
             
             // Count distinct freeze data items that have matching counting records
             // Match using: whsId, binId (nullable), sku, batchNo (nullable)
+            // Count only FreezeData items that have been counted (ignore binId)
             var totalCountedItems = await db.NtfFreezeDatas
                 .Where(f => db.NtfCountings.Any(c => 
                     c.WhsId == f.WhsId &&
-                    (c.BinId == f.BinId || (c.BinId == null && f.BinId == null)) &&
                     c.Sku == f.Sku &&
                     (c.BatchNo == f.BatchNo || (c.BatchNo == null && f.BatchNo == null))))
                 .CountAsync();
@@ -36,18 +36,18 @@ public static class DashboardEndpoints
             {
                 var totalItems = await db.NtfFreezeDatas.Where(f => f.WhsId == whs.Id).CountAsync();
                 
+                // Count only FreezeData items that have been counted (ignore binId for matching)
                 var countedItems = await db.NtfFreezeDatas
                     .Where(f => f.WhsId == whs.Id && db.NtfCountings.Any(c =>
                         c.WhsId == f.WhsId &&
-                        (c.BinId == f.BinId || (c.BinId == null && f.BinId == null)) &&
                         c.Sku == f.Sku &&
                         (c.BatchNo == f.BatchNo || (c.BatchNo == null && f.BatchNo == null))))
                     .CountAsync();
 
+                // Count variance items (ignore binId for matching)
                 var varianceItems = await db.NtfFreezeDatas
                     .Where(f => f.WhsId == whs.Id && db.NtfCountings.Any(c =>
                         c.WhsId == f.WhsId &&
-                        (c.BinId == f.BinId || (c.BinId == null && f.BinId == null)) &&
                         c.Sku == f.Sku &&
                         (c.BatchNo == f.BatchNo || (c.BatchNo == null && f.BatchNo == null)) &&
                         c.Qty != f.Qty))
@@ -173,7 +173,7 @@ public static class DashboardEndpoints
 
             locationStats = locationStats.OrderBy(l => l.BinLocation).ToList();
 
-            // Variance details (items with quantity mismatch)
+            // All counted items and variance details
             // Load data separately to handle nullable fields properly
             var allFreeze = await db.NtfFreezeDatas
                 .Where(f => f.WhsId == whsId)
@@ -183,33 +183,30 @@ public static class DashboardEndpoints
                 .Where(c => c.WhsId == whsId)
                 .ToListAsync();
             
-            // Join in memory to avoid nullable issues
-            var freezeDataWithCounting = (from f in allFreeze
-                                         join c in allCountings
-                                         on new { 
-                                             f.WhsId, 
-                                             BinId = f.BinId ?? 0, 
-                                             f.Sku, 
-                                             BatchNo = f.BatchNo ?? "" 
-                                         } equals new { 
-                                             c.WhsId, 
-                                             BinId = c.BinId ?? 0, 
-                                             c.Sku, 
-                                             BatchNo = c.BatchNo ?? "" 
-                                         }
-                                         where f.Qty != c.Qty
-                                         select new { Freeze = f, Count = c }).ToList();
+            // Join in memory - all counted items
+            var allCountedItems = (from f in allFreeze
+                                  join c in allCountings
+                                  on new { 
+                                      f.Sku, 
+                                      BatchNo = f.BatchNo ?? "" 
+                                  } equals new { 
+                                      c.Sku, 
+                                      BatchNo = c.BatchNo ?? "" 
+                                  }
+                                  select new { Freeze = f, Count = c }).ToList();
 
+            var allDetails = new List<VarianceDetailResult>();
             var varianceDetails = new List<VarianceDetailResult>();
 
-            foreach (var item in freezeDataWithCounting)
+            foreach (var item in allCountedItems)
             {
                 var binLocation = item.Freeze.BinId == null ? "No Location" :
                     (await db.NtfLocations.FindAsync(item.Freeze.BinId))?.BinLocation ?? "Unknown";
 
                 var variance = Math.Abs(item.Count.Qty - item.Freeze.Qty);
+                var hasVariance = item.Count.Qty != item.Freeze.Qty;
 
-                varianceDetails.Add(new VarianceDetailResult
+                var detail = new VarianceDetailResult
                 {
                     Sku = item.Freeze.Sku,
                     BatchNo = item.Freeze.BatchNo ?? string.Empty,
@@ -217,9 +214,17 @@ public static class DashboardEndpoints
                     FreezeQty = item.Freeze.Qty,
                     CountQty = item.Count.Qty,
                     Variance = variance
-                });
+                };
+
+                allDetails.Add(detail);
+                
+                if (hasVariance)
+                {
+                    varianceDetails.Add(detail);
+                }
             }
 
+            allDetails = allDetails.OrderBy(v => v.Sku).ToList();
             varianceDetails = varianceDetails.OrderByDescending(v => v.Variance).ToList();
 
             return Results.Ok(new
@@ -240,6 +245,16 @@ public static class DashboardEndpoints
                     status = loc.TotalItems == 0 ? "ไม่มีข้อมูล" :
                              loc.CountedItems == 0 ? "ยังไม่เริ่ม" :
                              loc.CountedItems == loc.TotalItems ? "นับครบแล้ว" : "กำลังนับ"
+                }).ToList(),
+                allCountedItems = allDetails.Select(v => new
+                {
+                    sku = v.Sku,
+                    batchNo = v.BatchNo,
+                    binLocation = v.BinLocation,
+                    freezeQty = v.FreezeQty,
+                    countQty = v.CountQty,
+                    variance = v.Variance,
+                    variancePercentage = v.FreezeQty > 0 ? Math.Round(Math.Abs((v.CountQty - v.FreezeQty) / v.FreezeQty * 100), 2) : 0
                 }).ToList(),
                 variances = varianceDetails.Select(v => new
                 {

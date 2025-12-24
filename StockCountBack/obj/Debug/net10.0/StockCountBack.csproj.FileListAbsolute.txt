@@ -214,3 +214,4 @@ D:\NW\PL\Project\StockCounting\StockCountBack\obj\Debug\net10.0\refint\StockCoun
 D:\NW\PL\Project\StockCounting\StockCountBack\obj\Debug\net10.0\StockCountBack.pdb
 D:\NW\PL\Project\StockCounting\StockCountBack\obj\Debug\net10.0\StockCountBack.genruntimeconfig.cache
 D:\NW\PL\Project\StockCounting\StockCountBack\obj\Debug\net10.0\ref\StockCountBack.dll
+D:\NW\PL\Project\StockCounting\StockCountBack\bin\Debug\net10.0\appsettings.Production.json

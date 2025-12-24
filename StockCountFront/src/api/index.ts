@@ -359,6 +359,7 @@ export interface WarehouseDetail {
     whsName: string;
   };
   locations: LocationStat[];
+  allCountedItems: VarianceDetail[];
   variances: VarianceDetail[];
 }
 
