@@ -42,7 +42,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <p className="text-xs text-orange-200 uppercase">{user?.role}</p>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+        <nav className="flex-1 overflow-y-auto p-4 space-y-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/30 [&::-webkit-scrollbar-thumb]:transition-colors">
           <Link to="/" className={getMenuClass('/')}>
             Dashboard
           </Link>
@@ -95,7 +95,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-gray-50">
+      <main className="flex-1 overflow-auto bg-gray-50 scroll-smooth">
         <div className="p-6">
           {children}
         </div>

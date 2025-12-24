@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import type { DashboardStatistics, WarehouseDetail, VarianceDetail } from '../api';
 import { dashboardAPI } from '../api';
 import { Button } from '../components/ui/button';
-import { ChevronLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Clock, Package, X, Filter, ListFilter } from 'lucide-react';
+import { ChevronLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Clock, Package, X, Filter, ListFilter, ArrowUp } from 'lucide-react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -25,9 +25,23 @@ export default function DashboardPage() {
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('variance');
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [showBackToTop, setShowBackToTop] = useState(false);
 
   useEffect(() => {
     loadStatistics();
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const mainContent = document.querySelector('main');
+      if (mainContent) {
+        setShowBackToTop(mainContent.scrollTop > 300);
+      }
+    };
+
+    const mainContent = document.querySelector('main');
+    mainContent?.addEventListener('scroll', handleScroll);
+    return () => mainContent?.removeEventListener('scroll', handleScroll);
   }, []);
 
   const loadStatistics = async () => {
@@ -64,6 +78,11 @@ export default function DashboardPage() {
     setSelectedWhsId(null);
     setSelectedLocation(null);
     setDisplayMode('variance');
+  };
+
+  const scrollToTop = () => {
+    const mainContent = document.querySelector('main');
+    mainContent?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const getStatusIcon = (status: string) => {
@@ -632,6 +651,17 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Back to Top Button */}
+        {showBackToTop && (
+          <Button
+            onClick={scrollToTop}
+            className="fixed bottom-8 right-8 rounded-full w-12 h-12 p-0 shadow-lg bg-primary hover:bg-primary/90 z-50"
+            size="icon"
+          >
+            <ArrowUp className="w-6 h-6" />
+          </Button>
         )}
       </div>
     );

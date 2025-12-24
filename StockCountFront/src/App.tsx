@@ -5,6 +5,7 @@ import { store } from './redux/store';
 import { useAppDispatch, useAppSelector } from './redux/hooks';
 import { setUser, clearAuth, setLoading } from './redux/authSlice';
 import { authAPI } from './api';
+import { Toaster } from 'sonner';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ScanBinMappingPage from './pages/ScanBinMappingPage';
@@ -93,6 +94,7 @@ function App() {
     <Provider store={store}>
       <AuthInitializer>
         <AppRoutes />
+        <Toaster position="top-right" richColors closeButton />
       </AuthInitializer>
     </Provider>
   );

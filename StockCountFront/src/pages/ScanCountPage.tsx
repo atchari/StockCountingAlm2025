@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { countingAPI, countPersonAPI, warehouseAPI, locationAPI } from '@/api';
 import type { Counting, CountPerson, Warehouse } from '@/api';
+import { toast } from 'sonner';
 
 export default function ScanCountPage() {
   // State for warehouse & location
@@ -24,10 +25,6 @@ export default function ScanCountPage() {
   const [countingRecords, setCountingRecords] = useState<Counting[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editQty, setEditQty] = useState('');
-  
-  // State for messages
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   
   // Refs for auto-focus
   const whLocationInputRef = useRef<HTMLInputElement>(null);
@@ -78,19 +75,16 @@ export default function ScanCountPage() {
   };
 
   const handleScanWhLocation = (scannedData: string) => {
-    setError('');
-    setSuccess('');
-    
     // Validate format |Warehouse|Location|
     if (!scannedData.startsWith('|')) {
-      setError('รูปแบบไม่ถูกต้อง ต้องเริ่มด้วย |');
+      toast.error('รูปแบบไม่ถูกต้อง ต้องเริ่มด้วย |');
       setTimeout(() => whLocationInputRef.current?.focus(), 100);
       return;
     }
 
     const parts = scannedData.split('|').filter(p => p.trim());
     if (parts.length < 1) {
-      setError('ไม่พบข้อมูล Warehouse');
+      toast.error('ไม่พบข้อมูล Warehouse');
       setTimeout(() => whLocationInputRef.current?.focus(), 100);
       return;
     }
@@ -101,7 +95,7 @@ export default function ScanCountPage() {
     // Find warehouse
     const warehouse = warehouses.find(w => w.whsName === whsName);
     if (!warehouse) {
-      setError(`ไม่พบคลัง: ${whsName}`);
+      toast.error(`ไม่พบคลัง: ${whsName}`);
       setTimeout(() => whLocationInputRef.current?.focus(), 100);
       return;
     }
@@ -116,10 +110,10 @@ export default function ScanCountPage() {
         if (location) {
           setSelectedBinId(location.id);
           setSelectedBinLocation(location.binLocation);
-          setSuccess(`✓ Scan: ${whsName} - ${binLocation}`);
+          toast.success(`✓ Scan: ${whsName} - ${binLocation}`);
           // Success: no focus needed, user will select count person
         } else {
-          setError(`ไม่พบ Location: ${binLocation} ในคลัง ${whsName}`);
+          toast.error(`ไม่พบ Location: ${binLocation} ในคลัง ${whsName}`);
           setSelectedBinId(null);
           setSelectedBinLocation('');
           setTimeout(() => whLocationInputRef.current?.focus(), 100);
@@ -128,18 +122,15 @@ export default function ScanCountPage() {
     } else {
       setSelectedBinId(null);
       setSelectedBinLocation('');
-      setSuccess(`✓ Scan: ${whsName} (ไม่มี Location)`);
+      toast.success(`✓ Scan: ${whsName} (ไม่มี Location)`);
       // Success: no focus needed, user will select count person
     }
   };
 
   const handleScanSku = (scannedData: string) => {
-    setError('');
-    setSuccess('');
-    
     // Validate format |SKU|Batch|
     if (!scannedData.startsWith('|')) {
-      setError('รูปแบบ SKU ไม่ถูกต้อง ต้องเริ่มด้วย |');
+      toast.error('รูปแบบ SKU ไม่ถูกต้อง ต้องเริ่มด้วย |');
       setSku('');
       setBatchNo('');
       setTimeout(() => skuInputRef.current?.focus(), 100);
@@ -148,7 +139,7 @@ export default function ScanCountPage() {
 
     const parts = scannedData.split('|').filter(p => p.trim());
     if (parts.length < 1) {
-      setError('ไม่พบข้อมูล SKU');
+      toast.error('ไม่พบข้อมูล SKU');
       setSku('');
       setBatchNo('');
       setTimeout(() => skuInputRef.current?.focus(), 100);
@@ -163,7 +154,7 @@ export default function ScanCountPage() {
       r => r.sku === scannedSku && (r.batchNo || '') === (scannedBatch || '')
     );
     if (duplicate) {
-      setError(`❌ ซ้ำ! SKU: ${scannedSku}${scannedBatch ? ` Batch: ${scannedBatch}` : ''} มีในระบบแล้ว (ID: ${duplicate.id})`);
+      toast.error(`❌ ซ้ำ! SKU: ${scannedSku}${scannedBatch ? ` Batch: ${scannedBatch}` : ''} มีในระบบแล้ว (ID: ${duplicate.id})`);
       setSku('');
       setBatchNo('');
       setTimeout(() => skuInputRef.current?.focus(), 100);
@@ -172,35 +163,32 @@ export default function ScanCountPage() {
 
     setSku(scannedSku);
     setBatchNo(scannedBatch);
-    setSuccess(`✓ SKU: ${scannedSku}${scannedBatch ? ` | Batch: ${scannedBatch}` : ''}`);
+    toast.success(`✓ SKU: ${scannedSku}${scannedBatch ? ` | Batch: ${scannedBatch}` : ''}`);
 
     // Focus to quantity input
     setTimeout(() => qtyInputRef.current?.focus(), 100);
   };
 
   const handleSubmit = async () => {
-    setError('');
-    setSuccess('');
-
     if (!selectedWhsId) {
-      setError('กรุณา Scan Warehouse/Location ก่อน');
+      toast.error('กรุณา Scan Warehouse/Location ก่อน');
       whLocationInputRef.current?.focus();
       return;
     }
 
     if (!selectedCountPersonId) {
-      setError('กรุณาเลือกผู้นับ');
+      toast.error('กรุณาเลือกผู้นับ');
       return;
     }
 
     if (!sku) {
-      setError('กรุณา Scan SKU');
+      toast.error('กรุณา Scan SKU');
       skuInputRef.current?.focus();
       return;
     }
 
     if (!qty || parseFloat(qty) < 0) {
-      setError('กรุณากรอกจำนวน (ใส่ 0 ได้ถ้าหาไม่เจอ)');
+      toast.error('กรุณากรอกจำนวน (ใส่ 0 ได้ถ้าหาไม่เจอ)');
       qtyInputRef.current?.focus();
       return;
     }
@@ -215,7 +203,7 @@ export default function ScanCountPage() {
         selectedCountPersonId
       );
 
-      setSuccess(`✅ บันทึกสำเร็จ! SKU: ${sku}${batchNo ? ` | Batch: ${batchNo}` : ''} | จำนวน: ${qty}`);
+      toast.success(`✅ บันทึกสำเร็จ! SKU: ${sku}${batchNo ? ` | Batch: ${batchNo}` : ''} | จำนวน: ${qty}`);
       
       // Reset SKU fields
       setSku('');
@@ -227,12 +215,11 @@ export default function ScanCountPage() {
       
       // Focus back to SKU input for next item
       setTimeout(() => {
-        setSuccess(''); // Clear success message
         skuInputRef.current?.focus();
-      }, 1500); // Show success for 1.5 seconds
+      }, 100);
     } catch (err: any) {
       const errorMsg = err.response?.data?.error || 'บันทึกไม่สำเร็จ';
-      setError(`❌ ${errorMsg}`);
+      toast.error(`❌ ${errorMsg}`);
       // Focus back to SKU input to retry
       setTimeout(() => skuInputRef.current?.focus(), 100);
       console.error('Save error:', err);
@@ -249,8 +236,6 @@ export default function ScanCountPage() {
     setBatchNo('');
     setQty('');
     setCountingRecords([]);
-    setError('');
-    setSuccess('');
     setTimeout(() => whLocationInputRef.current?.focus(), 100);
   };
 
@@ -261,17 +246,17 @@ export default function ScanCountPage() {
 
   const handleSaveEdit = async (id: number) => {
     if (!editQty || parseFloat(editQty) < 0) {
-      setError('กรุณากรอกจำนวนที่ถูกต้อง (ใส่ 0 ได้ถ้าหาไม่เจอ)');
+      toast.error('กรุณากรอกจำนวนที่ถูกต้อง (ใส่ 0 ได้ถ้าหาไม่เจอ)');
       return;
     }
 
     try {
       await countingAPI.update(id, parseFloat(editQty));
       setEditingId(null);
-      setSuccess('✓ แก้ไขเรียบร้อย');
+      toast.success('✓ แก้ไขเรียบร้อย');
       await loadCountingRecords();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'แก้ไขไม่สำเร็จ');
+      toast.error(err.response?.data?.error || 'แก้ไขไม่สำเร็จ');
     }
   };
 
@@ -293,18 +278,6 @@ export default function ScanCountPage() {
           Reset ใบใหม่
         </Button>
       </div>
-
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-lg border-2 border-red-300 shadow-md">
-          <p className="text-lg font-semibold">{error}</p>
-        </div>
-      )}
-
-      {success && (
-        <div className="mb-4 p-4 bg-green-50 text-green-700 rounded-lg border-2 border-green-300 shadow-md">
-          <p className="text-lg font-semibold">{success}</p>
-        </div>
-      )}
 
       {/* Scan WH/Location Section */}
       <div className="mb-6 p-6 bg-white rounded-lg shadow">
