@@ -140,7 +140,6 @@ public static class DashboardEndpoints
                 {
                     var hasCount = await db.NtfCountings.AnyAsync(c =>
                         c.WhsId == f.WhsId &&
-                        (c.BinId == f.BinId || (c.BinId == null && f.BinId == null)) &&
                         c.Sku == f.Sku &&
                         (c.BatchNo == f.BatchNo || (c.BatchNo == null && f.BatchNo == null)));
                     
@@ -150,7 +149,6 @@ public static class DashboardEndpoints
                         
                         var counting = await db.NtfCountings.FirstOrDefaultAsync(c =>
                             c.WhsId == f.WhsId &&
-                            (c.BinId == f.BinId || (c.BinId == null && f.BinId == null)) &&
                             c.Sku == f.Sku &&
                             (c.BatchNo == f.BatchNo || (c.BatchNo == null && f.BatchNo == null)));
                         
