@@ -21,9 +21,9 @@ public static class DashboardEndpoints
             var totalCountedItems = await db.NtfFreezeDatas
                 .Where(f => db.NtfCountings.Any(c => 
                     c.WhsId == f.WhsId &&
-                    (c.BinId == null && f.BinId == null || c.BinId == f.BinId) &&
+                    (c.BinId == f.BinId || (c.BinId == null && f.BinId == null)) &&
                     c.Sku == f.Sku &&
-                    (c.BatchNo == null && f.BatchNo == null || c.BatchNo == f.BatchNo)))
+                    (c.BatchNo == f.BatchNo || (c.BatchNo == null && f.BatchNo == null))))
                 .CountAsync();
 
             var overallProgress = totalFreezeItems > 0 ? (decimal)totalCountedItems / totalFreezeItems * 100 : 0;
@@ -39,17 +39,17 @@ public static class DashboardEndpoints
                 var countedItems = await db.NtfFreezeDatas
                     .Where(f => f.WhsId == whs.Id && db.NtfCountings.Any(c =>
                         c.WhsId == f.WhsId &&
-                        (c.BinId == null && f.BinId == null || c.BinId == f.BinId) &&
+                        (c.BinId == f.BinId || (c.BinId == null && f.BinId == null)) &&
                         c.Sku == f.Sku &&
-                        (c.BatchNo == null && f.BatchNo == null || c.BatchNo == f.BatchNo)))
+                        (c.BatchNo == f.BatchNo || (c.BatchNo == null && f.BatchNo == null))))
                     .CountAsync();
 
                 var varianceItems = await db.NtfFreezeDatas
                     .Where(f => f.WhsId == whs.Id && db.NtfCountings.Any(c =>
                         c.WhsId == f.WhsId &&
-                        (c.BinId == null && f.BinId == null || c.BinId == f.BinId) &&
+                        (c.BinId == f.BinId || (c.BinId == null && f.BinId == null)) &&
                         c.Sku == f.Sku &&
-                        (c.BatchNo == null && f.BatchNo == null || c.BatchNo == f.BatchNo) &&
+                        (c.BatchNo == f.BatchNo || (c.BatchNo == null && f.BatchNo == null)) &&
                         c.Qty != f.Qty))
                     .CountAsync();
 
@@ -140,9 +140,9 @@ public static class DashboardEndpoints
                 {
                     var hasCount = await db.NtfCountings.AnyAsync(c =>
                         c.WhsId == f.WhsId &&
-                        (c.BinId == null && f.BinId == null || c.BinId == f.BinId) &&
+                        (c.BinId == f.BinId || (c.BinId == null && f.BinId == null)) &&
                         c.Sku == f.Sku &&
-                        (c.BatchNo == null && f.BatchNo == null || c.BatchNo == f.BatchNo));
+                        (c.BatchNo == f.BatchNo || (c.BatchNo == null && f.BatchNo == null)));
                     
                     if (hasCount)
                     {
@@ -150,9 +150,9 @@ public static class DashboardEndpoints
                         
                         var counting = await db.NtfCountings.FirstOrDefaultAsync(c =>
                             c.WhsId == f.WhsId &&
-                            (c.BinId == null && f.BinId == null || c.BinId == f.BinId) &&
+                            (c.BinId == f.BinId || (c.BinId == null && f.BinId == null)) &&
                             c.Sku == f.Sku &&
-                            (c.BatchNo == null && f.BatchNo == null || c.BatchNo == f.BatchNo));
+                            (c.BatchNo == f.BatchNo || (c.BatchNo == null && f.BatchNo == null)));
                         
                         if (counting != null && counting.Qty != f.Qty)
                         {
