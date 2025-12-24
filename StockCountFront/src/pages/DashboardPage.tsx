@@ -495,8 +495,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Variance Details */}
-        {filteredVariances.length > 0 && (
+        {/* Counting Details - Show when there are counted items */}
+        {warehouseDetail.allCountedItems.length > 0 && (
           <div className={`p-6 rounded-lg border-2 ${displayMode === 'variance' ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
             <div className="flex items-center justify-between mb-4">
               <h2 className={`text-2xl font-bold flex items-center gap-2 ${displayMode === 'variance' ? 'text-red-700' : 'text-blue-700'}`}>
@@ -546,28 +546,30 @@ export default function DashboardPage() {
                 รายการที่ยอดนับไม่ตรงกับข้อมูล Freeze - ควรให้ Auditor ตรวจสอบและแก้ไข
               </p>
             )}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    {table.getHeaderGroups().map((headerGroup) => (
-                      <tr key={headerGroup.id}>
-                        {headerGroup.headers.map((header) => (
-                          <th
-                            key={header.id}
-                            className={`px-4 py-3 text-xs font-semibold text-gray-700 uppercase ${
-                              ['freezeQty', 'countQty', 'variance', 'variancePercentage'].includes(header.id)
-                                ? 'text-right'
-                                : 'text-left'
-                            } ${header.column.getCanSort() ? 'cursor-pointer select-none hover:bg-gray-100' : ''}`}
-                            onClick={header.column.getToggleSortingHandler()}
-                          >
-                            <div className="flex items-center gap-1">
-                              {flexRender(header.column.columnDef.header, header.getContext())}
-                              {{
-                                asc: ' 🔼',
-                                desc: ' 🔽',
-                              }[header.column.getIsSorted() as string] ?? null}
+            
+            {filteredVariances.length > 0 ? (
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      {table.getHeaderGroups().map((headerGroup) => (
+                        <tr key={headerGroup.id}>
+                          {headerGroup.headers.map((header) => (
+                            <th
+                              key={header.id}
+                              className={`px-4 py-3 text-xs font-semibold text-gray-700 uppercase ${
+                                ['freezeQty', 'countQty', 'variance', 'variancePercentage'].includes(header.id)
+                                  ? 'text-right'
+                                  : 'text-left'
+                              } ${header.column.getCanSort() ? 'cursor-pointer select-none hover:bg-gray-100' : ''}`}
+                              onClick={header.column.getToggleSortingHandler()}
+                            >
+                              <div className="flex items-center gap-1">
+                                {flexRender(header.column.columnDef.header, header.getContext())}
+                                {{
+                                  asc: ' 🔼',
+                                  desc: ' 🔽',
+                                }[header.column.getIsSorted() as string] ?? null}
                             </div>
                           </th>
                         ))}
@@ -595,30 +597,38 @@ export default function DashboardPage() {
                 </table>
               </div>
             </div>
-          </div>
-        )}
-
-        {filteredVariances.length === 0 && selectedLocation && (
-          <div className="bg-green-50 p-6 rounded-lg border-2 border-green-200">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="w-8 h-8 text-green-600" />
-              <div>
-                <h3 className="text-xl font-bold text-green-700">
-                  ไม่พบรายการที่มียอดไม่ตรงใน {selectedLocation}
-                </h3>
-                <p className="text-sm text-gray-600">ยอดนับตรงกับข้อมูล Freeze ทั้งหมดสำหรับ location นี้</p>
+            ) : (
+              <div className="bg-white p-6 rounded-lg border-2 border-gray-200">
+                <div className="flex items-center gap-3 justify-center text-gray-500">
+                  <CheckCircle2 className="w-8 h-8" />
+                  <div>
+                    <h3 className="text-lg font-bold">
+                      {displayMode === 'variance' 
+                        ? 'ไม่พบรายการที่มียอดไม่ตรง' 
+                        : selectedLocation 
+                          ? `ไม่พบรายการที่นับแล้วใน ${selectedLocation}`
+                          : 'ไม่พบรายการที่นับแล้ว'}
+                    </h3>
+                    <p className="text-sm">
+                      {displayMode === 'variance' 
+                        ? 'ยอดนับตรงกับข้อมูล Freeze ทั้งหมด' 
+                        : 'กรุณาเลือก Location อื่นหรือคลิกล้างตัวกรอง'}
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
-        {warehouseDetail.variances.length === 0 && (
-          <div className="bg-green-50 p-6 rounded-lg border-2 border-green-200">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="w-8 h-8 text-green-600" />
+        {/* No counted items at all */}
+        {warehouseDetail.allCountedItems.length === 0 && (
+          <div className="bg-gray-50 p-6 rounded-lg border-2 border-gray-200">
+            <div className="flex items-center gap-3 justify-center">
+              <Package className="w-8 h-8 text-gray-400" />
               <div>
-                <h3 className="text-xl font-bold text-green-700">ไม่พบรายการที่มียอดไม่ตรง</h3>
-                <p className="text-sm text-gray-600">ยอดนับตรงกับข้อมูล Freeze ทั้งหมด</p>
+                <h3 className="text-xl font-bold text-gray-700">ยังไม่มีรายการนับ</h3>
+                <p className="text-sm text-gray-600">เริ่มนับ Stock ในคลังนี้เพื่อดูข้อมูล</p>
               </div>
             </div>
           </div>
