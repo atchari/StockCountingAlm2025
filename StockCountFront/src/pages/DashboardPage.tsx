@@ -1,8 +1,17 @@
-import { useEffect, useState } from 'react';
-import type { DashboardStatistics, WarehouseDetail } from '../api';
+import { useEffect, useState, useMemo } from 'react';
+import type { DashboardStatistics, WarehouseDetail, VarianceDetail } from '../api';
 import { dashboardAPI } from '../api';
 import { Button } from '../components/ui/button';
-import { ChevronLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Clock, Package } from 'lucide-react';
+import { ChevronLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Clock, Package, X, Filter } from 'lucide-react';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  type ColumnDef,
+  type SortingState,
+  flexRender,
+} from '@tanstack/react-table';
 
 type ViewMode = 'overview' | 'warehouse';
 
@@ -12,6 +21,8 @@ export default function DashboardPage() {
   const [warehouseDetail, setWarehouseDetail] = useState<WarehouseDetail | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
   const [, setSelectedWhsId] = useState<number | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   useEffect(() => {
     loadStatistics();
@@ -35,6 +46,7 @@ export default function DashboardPage() {
       const data = await dashboardAPI.getWarehouseDetail(whsId);
       setWarehouseDetail(data);
       setSelectedWhsId(whsId);
+      setSelectedLocation(null); // Reset filter
       setViewMode('warehouse');
     } catch (error) {
       console.error('Failed to load warehouse detail:', error);
@@ -47,6 +59,7 @@ export default function DashboardPage() {
     setViewMode('overview');
     setWarehouseDetail(null);
     setSelectedWhsId(null);
+    setSelectedLocation(null);
   };
 
   const getStatusIcon = (status: string) => {
@@ -73,6 +86,82 @@ export default function DashboardPage() {
     if (percentage >= 25) return 'bg-yellow-500';
     return 'bg-gray-400';
   };
+
+  // TanStack Table columns definition
+  const columns = useMemo<ColumnDef<VarianceDetail>[]>(
+    () => [
+      {
+        accessorKey: 'binLocation',
+        header: 'Location',
+        cell: (info) => <span className="font-medium">{info.getValue() as string}</span>,
+      },
+      {
+        accessorKey: 'sku',
+        header: 'SKU',
+        cell: (info) => <span className="font-mono text-sm">{info.getValue() as string}</span>,
+      },
+      {
+        accessorKey: 'batchNo',
+        header: 'Batch No',
+        cell: (info) => <span className="font-mono text-sm">{(info.getValue() as string) || '-'}</span>,
+      },
+      {
+        accessorKey: 'freezeQty',
+        header: 'Freeze Qty',
+        cell: (info) => (
+          <span className="font-semibold">{(info.getValue() as number).toLocaleString()}</span>
+        ),
+      },
+      {
+        accessorKey: 'countQty',
+        header: 'Count Qty',
+        cell: (info) => (
+          <span className="font-semibold text-blue-600">{(info.getValue() as number).toLocaleString()}</span>
+        ),
+      },
+      {
+        accessorKey: 'variance',
+        header: 'ผลต่าง',
+        cell: (info) => {
+          const row = info.row.original;
+          const diff = row.countQty - row.freezeQty;
+          return (
+            <span className="font-bold text-red-600">
+              {diff > 0 ? '+' : ''}{diff.toLocaleString()}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: 'variancePercentage',
+        header: '%',
+        cell: (info) => (
+          <span className="font-bold text-red-600">{info.getValue() as number}%</span>
+        ),
+      },
+    ],
+    []
+  );
+
+  // Filtered variances based on selected location
+  const filteredVariances = useMemo(() => {
+    if (!warehouseDetail) return [];
+    if (!selectedLocation) return warehouseDetail.variances;
+    return warehouseDetail.variances.filter(v => v.binLocation === selectedLocation);
+  }, [warehouseDetail, selectedLocation]);
+
+  // TanStack Table instance
+  const table = useReactTable({
+    data: filteredVariances,
+    columns,
+    state: {
+      sorting,
+    },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  });
 
   if (loading && !statistics) {
     return (
@@ -324,12 +413,38 @@ export default function DashboardPage() {
 
         {/* Location Statistics */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-4">📍 สถานะแยกตาม Location</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold">📍 สถานะแยกตาม Location</h2>
+            {selectedLocation && (
+              <Button 
+                onClick={() => setSelectedLocation(null)} 
+                variant="outline" 
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <X className="w-4 h-4" />
+                ล้างตัวกรอง
+              </Button>
+            )}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {warehouseDetail.locations.map((loc) => (
-              <div key={loc.binId} className="bg-white p-4 rounded-lg shadow border border-gray-200">
+              <div 
+                key={loc.binId} 
+                className={`bg-white p-4 rounded-lg shadow border-2 transition-all cursor-pointer hover:shadow-lg ${
+                  selectedLocation === loc.binLocation 
+                    ? 'border-blue-500 ring-2 ring-blue-200' 
+                    : 'border-gray-200 hover:border-blue-300'
+                }`}
+                onClick={() => setSelectedLocation(loc.binLocation)}
+              >
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-bold text-lg">{loc.binLocation}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-lg">{loc.binLocation}</h3>
+                    {selectedLocation === loc.binLocation && (
+                      <Filter className="w-4 h-4 text-blue-600" />
+                    )}
+                  </div>
                   {getStatusIcon(loc.status)}
                 </div>
                 
@@ -372,12 +487,24 @@ export default function DashboardPage() {
         </div>
 
         {/* Variance Details */}
-        {warehouseDetail.variances.length > 0 && (
+        {filteredVariances.length > 0 && (
           <div className="bg-red-50 p-6 rounded-lg border-2 border-red-200">
-            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-red-700">
-              <AlertTriangle className="w-6 h-6" />
-              รายการที่มียอดไม่ตรง (ต้องตรวจสอบ)
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold flex items-center gap-2 text-red-700">
+                <AlertTriangle className="w-6 h-6" />
+                รายการที่มียอดไม่ตรง (ต้องตรวจสอบ)
+                {selectedLocation && (
+                  <span className="text-sm font-normal text-gray-600">
+                    - {selectedLocation}
+                  </span>
+                )}
+              </h2>
+              {selectedLocation && (
+                <span className="text-sm text-gray-600">
+                  แสดง {filteredVariances.length} รายการจาก {warehouseDetail.variances.length} รายการทั้งหมด
+                </span>
+              )}
+            </div>
             <p className="text-sm text-gray-600 mb-4">
               รายการที่ยอดนับไม่ตรงกับข้อมูล Freeze - ควรให้ Auditor ตรวจสอบและแก้ไข
             </p>
@@ -385,34 +512,63 @@ export default function DashboardPage() {
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Location</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">SKU</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Batch No</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase">Freeze Qty</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase">Count Qty</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase">ผลต่าง</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase">%</th>
-                    </tr>
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <tr key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => (
+                          <th
+                            key={header.id}
+                            className={`px-4 py-3 text-xs font-semibold text-gray-700 uppercase ${
+                              ['freezeQty', 'countQty', 'variance', 'variancePercentage'].includes(header.id)
+                                ? 'text-right'
+                                : 'text-left'
+                            } ${header.column.getCanSort() ? 'cursor-pointer select-none hover:bg-gray-100' : ''}`}
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            <div className="flex items-center gap-1">
+                              {flexRender(header.column.columnDef.header, header.getContext())}
+                              {{
+                                asc: ' 🔼',
+                                desc: ' 🔽',
+                              }[header.column.getIsSorted() as string] ?? null}
+                            </div>
+                          </th>
+                        ))}
+                      </tr>
+                    ))}
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {warehouseDetail.variances.map((variance, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm">{variance.binLocation}</td>
-                        <td className="px-4 py-3 text-sm font-mono">{variance.sku}</td>
-                        <td className="px-4 py-3 text-sm font-mono">{variance.batchNo || '-'}</td>
-                        <td className="px-4 py-3 text-sm text-right font-semibold">{variance.freezeQty.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm text-right font-semibold text-blue-600">{variance.countQty.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm text-right font-bold text-red-600">
-                          {variance.countQty > variance.freezeQty ? '+' : ''}{(variance.countQty - variance.freezeQty).toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-right font-bold text-red-600">
-                          {variance.variancePercentage}%
-                        </td>
+                    {table.getRowModel().rows.map((row) => (
+                      <tr key={row.id} className="hover:bg-gray-50">
+                        {row.getVisibleCells().map((cell) => (
+                          <td
+                            key={cell.id}
+                            className={`px-4 py-3 text-sm ${
+                              ['freezeQty', 'countQty', 'variance', 'variancePercentage'].includes(cell.column.id)
+                                ? 'text-right'
+                                : ''
+                            }`}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </td>
+                        ))}
                       </tr>
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {filteredVariances.length === 0 && selectedLocation && (
+          <div className="bg-green-50 p-6 rounded-lg border-2 border-green-200">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="w-8 h-8 text-green-600" />
+              <div>
+                <h3 className="text-xl font-bold text-green-700">
+                  ไม่พบรายการที่มียอดไม่ตรงใน {selectedLocation}
+                </h3>
+                <p className="text-sm text-gray-600">ยอดนับตรงกับข้อมูล Freeze ทั้งหมดสำหรับ location นี้</p>
               </div>
             </div>
           </div>
