@@ -131,15 +131,19 @@ public static class CountingEndpoints
                 return Results.BadRequest(new { error = "Count person not found" });
             }
 
-            // Check for duplicate SKU+Batch in this warehouse
+            // Check for duplicate SKU+Batch+Location in this warehouse
             var duplicate = await db.NtfCountings.FirstOrDefaultAsync(c =>
                 c.WhsId == request.WhsId &&
+                (c.BinId == request.BinId || (c.BinId == null && request.BinId == null)) &&
                 c.Sku == request.Sku &&
-                c.BatchNo == request.BatchNo);
+                (c.BatchNo == request.BatchNo || (c.BatchNo == null && request.BatchNo == null)));
 
             if (duplicate != null)
             {
-                return Results.Conflict(new { error = $"SKU '{request.Sku}' Batch '{request.BatchNo ?? "(ไม่มี)"}' มีในระบบแล้ว (ID: {duplicate.Id})" });
+                var locationName = request.BinId.HasValue 
+                    ? (await db.NtfLocations.FindAsync(request.BinId.Value))?.BinLocation ?? "Unknown"
+                    : "No Location";
+                return Results.Conflict(new { error = $"SKU '{request.Sku}' Batch '{request.BatchNo ?? "(ไม่มี)"}' ที่ Location '{locationName}' มีในระบบแล้ว (ID: {duplicate.Id})" });
             }
 
             var counting = new NtfCounting
