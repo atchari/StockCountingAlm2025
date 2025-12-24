@@ -199,8 +199,8 @@ export default function ScanCountPage() {
       return;
     }
 
-    if (!qty || parseFloat(qty) <= 0) {
-      setError('กรุณากรอกจำนวน');
+    if (!qty || parseFloat(qty) < 0) {
+      setError('กรุณากรอกจำนวน (ใส่ 0 ได้ถ้าหาไม่เจอ)');
       qtyInputRef.current?.focus();
       return;
     }
@@ -260,8 +260,8 @@ export default function ScanCountPage() {
   };
 
   const handleSaveEdit = async (id: number) => {
-    if (!editQty || parseFloat(editQty) <= 0) {
-      setError('กรุณากรอกจำนวนที่ถูกต้อง');
+    if (!editQty || parseFloat(editQty) < 0) {
+      setError('กรุณากรอกจำนวนที่ถูกต้อง (ใส่ 0 ได้ถ้าหาไม่เจอ)');
       return;
     }
 
