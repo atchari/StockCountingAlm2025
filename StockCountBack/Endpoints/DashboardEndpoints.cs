@@ -295,9 +295,18 @@ public static class DashboardEndpoints
                 })
                 .ToListAsync();
 
-            // Group by hour and count distinct locations in memory
+            // Convert to Thailand timezone (UTC+7) and group by hour
+            var thailandTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
             var hourlyLocationCounts = countings
-                .GroupBy(c => c.CreatedAt.Hour)
+                .Select(c => new
+                {
+                    Hour = TimeZoneInfo.ConvertTimeFromUtc(
+                        DateTime.SpecifyKind(c.CreatedAt, DateTimeKind.Utc),
+                        thailandTimeZone
+                    ).Hour,
+                    c.BinId
+                })
+                .GroupBy(c => c.Hour)
                 .Select(g => new 
                 { 
                     Hour = g.Key,
