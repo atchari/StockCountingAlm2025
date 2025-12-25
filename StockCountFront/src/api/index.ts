@@ -363,6 +363,16 @@ export interface WarehouseDetail {
   variances: VarianceDetail[];
 }
 
+export interface HourlyLocationData {
+  hour: string;
+  locationCount: number;
+}
+
+export interface HourlyLocationResponse {
+  date: string;
+  data: HourlyLocationData[];
+}
+
 export const dashboardAPI = {
   getStatistics: async () => {
     const response = await apiClient.get<DashboardStatistics>('/api/dashboard/statistics');
@@ -371,6 +381,12 @@ export const dashboardAPI = {
 
   getWarehouseDetail: async (whsId: number) => {
     const response = await apiClient.get<WarehouseDetail>(`/api/dashboard/warehouse/${whsId}`);
+    return response.data;
+  },
+
+  getHourlyLocations: async (date?: string) => {
+    const params = date ? { date } : {};
+    const response = await apiClient.get<HourlyLocationResponse>('/api/dashboard/hourly-locations', { params });
     return response.data;
   },
 };

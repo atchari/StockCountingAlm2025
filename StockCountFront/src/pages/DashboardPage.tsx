@@ -1,8 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
-import type { DashboardStatistics, WarehouseDetail, VarianceDetail } from '../api';
+import type { DashboardStatistics, WarehouseDetail, VarianceDetail, HourlyLocationResponse } from '../api';
 import { dashboardAPI } from '../api';
 import { Button } from '../components/ui/button';
-import { ChevronLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Clock, Package, X, Filter, ListFilter, ArrowUp } from 'lucide-react';
+import { ChevronLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Clock, Package, X, Filter, ListFilter, ArrowUp, Calendar } from 'lucide-react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -12,6 +12,7 @@ import {
   type SortingState,
   flexRender,
 } from '@tanstack/react-table';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 type ViewMode = 'overview' | 'warehouse';
 type DisplayMode = 'all' | 'variance';
@@ -23,14 +24,21 @@ export default function DashboardPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
   const [, setSelectedWhsId] = useState<number | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
-  const [displayMode, setDisplayMode] = useState<DisplayMode>('variance');
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('all');
   const [sorting, setSorting] = useState<SortingState>([]);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [badgeView, setBadgeView] = useState(false);
+  const [hourlyData, setHourlyData] = useState<HourlyLocationResponse | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     loadStatistics();
+    loadHourlyData(selectedDate);
   }, []);
+
+  useEffect(() => {
+    loadHourlyData(selectedDate);
+  }, [selectedDate]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -54,6 +62,15 @@ export default function DashboardPage() {
       console.error('Failed to load statistics:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadHourlyData = async (date: string) => {
+    try {
+      const data = await dashboardAPI.getHourlyLocations(date);
+      setHourlyData(data);
+    } catch (error) {
+      console.error('Failed to load hourly data:', error);
     }
   };
 
@@ -319,6 +336,66 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Hourly Location Count Chart */}
+        <div className="mb-8 p-6 bg-white rounded-lg shadow-lg border-2 border-indigo-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              📈 จำนวน Location ที่นับในแต่ละชั่วโมง
+            </h2>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-gray-600" />
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+          
+          {hourlyData ? (
+            <div className="h-96">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={hourlyData.data} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="hour" 
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <YAxis 
+                    label={{ value: 'จำนวน Location', angle: -90, position: 'insideLeft' }}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                    labelStyle={{ fontWeight: 'bold', color: '#374151' }}
+                    formatter={(value: number) => [`${value} locations`, 'จำนวน']}
+                  />
+                  <Bar dataKey="locationCount" radius={[8, 8, 0, 0]}>
+                    {hourlyData.data.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={entry.locationCount > 0 ? '#4f46e5' : '#e5e7eb'} 
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-96 flex items-center justify-center text-gray-500">
+              กำลังโหลดข้อมูล...
+            </div>
+          )}
+          
+          <div className="mt-4 text-sm text-gray-600 text-center">
+            แสดงจำนวน Location ที่มีการนับในแต่ละชั่วโมง สำหรับวันที่ {selectedDate}
           </div>
         </div>
 

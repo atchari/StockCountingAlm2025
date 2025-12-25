@@ -42,3 +42,6 @@ public record CountingDto(
     string? UpdatedByName);
 public record CreateCountingRequest(int WhsId, int? BinId, string Sku, string? BatchNo, decimal Qty, int CountPersonId);
 public record UpdateCountingRequest(decimal Qty);
+
+// Dashboard DTOs
+public record HourlyLocationCount(string Hour, int LocationCount);
