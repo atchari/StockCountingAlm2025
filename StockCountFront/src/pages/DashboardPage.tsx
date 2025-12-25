@@ -12,7 +12,7 @@ import {
   type SortingState,
   flexRender,
 } from '@tanstack/react-table';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Label as ChartLabel } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 type ViewMode = 'overview' | 'warehouse';
 type DisplayMode = 'all' | 'variance';
