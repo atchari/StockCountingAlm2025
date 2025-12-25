@@ -375,7 +375,7 @@ export default function DashboardPage() {
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '8px' }}
                     labelStyle={{ fontWeight: 'bold', color: '#374151' }}
-                    formatter={(value: number) => [`${value} locations`, 'จำนวน']}
+                    formatter={(value) => [`${value} locations`, 'จำนวน']}
                   />
                   <Bar dataKey="locationCount" radius={[8, 8, 0, 0]}>
                     {hourlyData.data.map((entry, index) => (
