@@ -12,7 +12,7 @@ import {
   type SortingState,
   flexRender,
 } from '@tanstack/react-table';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Label as ChartLabel } from 'recharts';
 
 type ViewMode = 'overview' | 'warehouse';
 type DisplayMode = 'all' | 'variance';
@@ -379,7 +379,7 @@ export default function DashboardPage() {
           {hourlyData ? (
             <div className="h-96">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={hourlyData.data} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                <LineChart data={hourlyData.data} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="hour" 
@@ -397,15 +397,21 @@ export default function DashboardPage() {
                     labelStyle={{ fontWeight: 'bold', color: '#374151' }}
                     formatter={(value) => [`${value} locations`, 'จำนวน']}
                   />
-                  <Bar dataKey="locationCount" radius={[8, 8, 0, 0]}>
-                    {hourlyData.data.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={entry.locationCount > 0 ? '#10b981' : '#e5e7eb'} 
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
+                  <Line 
+                    type="monotone" 
+                    dataKey="locationCount" 
+                    stroke="#10b981" 
+                    strokeWidth={3}
+                    dot={{ fill: '#10b981', r: 5 }}
+                    activeDot={{ r: 8 }}
+                    label={{ 
+                      position: 'top', 
+                      fill: '#059669',
+                      fontSize: 12,
+                      fontWeight: 'bold'
+                    }}
+                  />
+                </LineChart>
               </ResponsiveContainer>
             </div>
           ) : (
@@ -414,7 +420,7 @@ export default function DashboardPage() {
             </div>
           )}
           
-          <div className="mt-4 text-sm text-gray-600 text-center">
+          <div className="mt-2 text-sm text-gray-600 text-center">
             แสดงจำนวน Location ที่มีการนับในแต่ละชั่วโมง สำหรับวันที่ {selectedDate}
           </div>
         </div>
@@ -608,7 +614,7 @@ export default function DashboardPage() {
           {warehouseHourlyData ? (
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={warehouseHourlyData.data} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                <LineChart data={warehouseHourlyData.data} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="hour" 
@@ -626,15 +632,21 @@ export default function DashboardPage() {
                     labelStyle={{ fontWeight: 'bold', color: '#374151' }}
                     formatter={(value) => [`${value} locations`, 'จำนวน']}
                   />
-                  <Bar dataKey="locationCount" radius={[8, 8, 0, 0]}>
-                    {warehouseHourlyData.data.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={entry.locationCount > 0 ? '#10b981' : '#e5e7eb'} 
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
+                  <Line 
+                    type="monotone" 
+                    dataKey="locationCount" 
+                    stroke="#10b981" 
+                    strokeWidth={3}
+                    dot={{ fill: '#10b981', r: 5 }}
+                    activeDot={{ r: 8 }}
+                    label={{ 
+                      position: 'top', 
+                      fill: '#059669',
+                      fontSize: 12,
+                      fontWeight: 'bold'
+                    }}
+                  />
+                </LineChart>
               </ResponsiveContainer>
             </div>
           ) : (
@@ -643,7 +655,7 @@ export default function DashboardPage() {
             </div>
           )}
           
-          <div className="mt-4 text-sm text-gray-600 text-center">
+          <div className="mt-2 text-sm text-gray-600 text-center">
             แสดงจำนวน Location ที่มีการนับในแต่ละชั่วโมงของคลังนี้ สำหรับวันที่ {warehouseSelectedDate}
           </div>
         </div>
