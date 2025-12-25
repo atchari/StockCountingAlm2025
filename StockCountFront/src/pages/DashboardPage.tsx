@@ -463,26 +463,33 @@ export default function DashboardPage() {
         </div>
 
         {/* Warehouse Summary - Show in badge view */}
-        {badgeView && (
-          <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
-              <p className="text-sm text-gray-600 mb-1">ทั้งหมด</p>
-              <p className="text-2xl font-bold text-gray-800">{warehouseDetail.warehouse.totalItems}</p>
+        {badgeView && (() => {
+          const totalItems = warehouseDetail.locations.reduce((sum, loc) => sum + loc.totalItems, 0);
+          const countedItems = warehouseDetail.locations.reduce((sum, loc) => sum + loc.countedItems, 0);
+          const varianceItems = warehouseDetail.locations.reduce((sum, loc) => sum + loc.varianceItems, 0);
+          const progressPercentage = totalItems > 0 ? Math.round((countedItems / totalItems) * 100) : 0;
+          
+          return (
+            <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+                <p className="text-sm text-gray-600 mb-1">ทั้งหมด</p>
+                <p className="text-2xl font-bold text-gray-800">{totalItems}</p>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
+                <p className="text-sm text-gray-600 mb-1">นับแล้ว</p>
+                <p className="text-2xl font-bold text-green-600">{countedItems}</p>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
+                <p className="text-sm text-gray-600 mb-1">ไม่ตรง</p>
+                <p className="text-2xl font-bold text-red-600">{varianceItems}</p>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow border-l-4 border-purple-500">
+                <p className="text-sm text-gray-600 mb-1">ความคืบหน้า</p>
+                <p className="text-2xl font-bold text-purple-600">{progressPercentage}%</p>
+              </div>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
-              <p className="text-sm text-gray-600 mb-1">นับแล้ว</p>
-              <p className="text-2xl font-bold text-green-600">{warehouseDetail.warehouse.countedItems}</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
-              <p className="text-sm text-gray-600 mb-1">ไม่ตรง</p>
-              <p className="text-2xl font-bold text-red-600">{warehouseDetail.warehouse.varianceItems}</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-purple-500">
-              <p className="text-sm text-gray-600 mb-1">ความคืบหน้า</p>
-              <p className="text-2xl font-bold text-purple-600">{warehouseDetail.warehouse.progressPercentage}%</p>
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Location Badges Overview */}
         <div className="mb-6 p-4 bg-white rounded-lg shadow">
