@@ -420,7 +420,7 @@ export default function DashboardPage() {
             </div>
           )}
           
-          <div className="mt-2 text-sm text-gray-600 text-center">
+          <div className="mt-0 text-sm text-gray-600 text-center">
             แสดงจำนวน Location ที่มีการนับในแต่ละชั่วโมง สำหรับวันที่ {selectedDate}
           </div>
         </div>
@@ -655,7 +655,7 @@ export default function DashboardPage() {
             </div>
           )}
           
-          <div className="mt-2 text-sm text-gray-600 text-center">
+          <div className="mt-0 text-sm text-gray-600 text-center">
             แสดงจำนวน Location ที่มีการนับในแต่ละชั่วโมงของคลังนี้ สำหรับวันที่ {warehouseSelectedDate}
           </div>
         </div>
