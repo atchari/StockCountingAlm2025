@@ -42,6 +42,9 @@ export default function DashboardPage() {
   const [warehouseHourlyItemsData, setWarehouseHourlyItemsData] = useState<HourlyItemResponse | null>(null);
   const [warehouseItemsSelectedDate, setWarehouseItemsSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [hourlyItemsDataCache, setHourlyItemsDataCache] = useState<Record<string, HourlyItemResponse>>({});
+  
+  // State for location sorting
+  const [locationSortMode, setLocationSortMode] = useState<'alphabetic' | 'color'>('alphabetic');
 
   useEffect(() => {
     loadStatistics();
@@ -215,6 +218,24 @@ export default function DashboardPage() {
     if (percentage >= 50) return 'bg-orange-500';
     if (percentage >= 25) return 'bg-yellow-500';
     return 'bg-gray-400';
+  };
+
+  // ฟังก์ชันกำหนดสี badge ตามเปอร์เซ็นต์
+  const getLocationBadgeColor = (percentage: number) => {
+    if (percentage === 0) {
+      return 'bg-red-100 text-red-800 border-red-300 hover:bg-red-200';
+    } else if (percentage > 0 && percentage < 100) {
+      return 'bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-200';
+    } else {
+      return 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200';
+    }
+  };
+
+  // ฟังก์ชันกำหนดลำดับสี (แดง=0, เหลือง=1, เขียว=2)
+  const getColorGroup = (percentage: number) => {
+    if (percentage === 0) return 0; // แดง
+    if (percentage < 100) return 1; // เหลือง
+    return 2; // เขียว
   };
 
   // TanStack Table columns definition
@@ -863,28 +884,65 @@ export default function DashboardPage() {
 
         {/* Location Badges Overview */}
         <div className="mb-6 p-4 bg-white rounded-lg shadow">
-          <h2 className="text-lg font-semibold mb-3">📍 Location ทั้งหมด</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold">📍 Location ทั้งหมด</h2>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setLocationSortMode('alphabetic')}
+                variant={locationSortMode === 'alphabetic' ? 'default' : 'outline'}
+                size="sm"
+                className="text-xs"
+              >
+                เรียง A-Z
+              </Button>
+              <Button
+                onClick={() => setLocationSortMode('color')}
+                variant={locationSortMode === 'color' ? 'default' : 'outline'}
+                size="sm"
+                className="text-xs"
+              >
+                เรียงตามสี
+              </Button>
+            </div>
+          </div>
           <div className="flex flex-wrap gap-2">
-            {warehouseDetail.locations.map((loc) => {
-              const isComplete = loc.progressPercentage === 100;
-              const badgeColor = isComplete 
-                ? 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200' 
-                : 'bg-red-100 text-red-800 border-red-300 hover:bg-red-200';
+            {(() => {
+              let sortedLocations = [...warehouseDetail.locations];
               
-              return (
-                <button
-                  key={loc.binId}
-                  onClick={() => setSelectedLocation(loc.binLocation)}
-                  className={`px-3 py-1.5 rounded-full border-2 text-sm font-medium transition-all ${badgeColor} ${
-                    selectedLocation === loc.binLocation 
-                      ? 'ring-2 ring-blue-400 scale-105' 
-                      : 'hover:scale-105'
-                  }`}
-                >
-                  {loc.binLocation} ({loc.progressPercentage}%)
-                </button>
-              );
-            })}
+              if (locationSortMode === 'alphabetic') {
+                // เรียงตามตัวอักษร
+                sortedLocations.sort((a, b) => a.binLocation.localeCompare(b.binLocation));
+              } else {
+                // เรียงตามกลุ่ศสี: แดง (0%) -> เหลือง (>0% <100%) -> เขียว (100%)
+                sortedLocations.sort((a, b) => {
+                  const colorGroupA = getColorGroup(a.progressPercentage);
+                  const colorGroupB = getColorGroup(b.progressPercentage);
+                  if (colorGroupA !== colorGroupB) {
+                    return colorGroupA - colorGroupB;
+                  }
+                  // ถ้าสีเดียวกัน เรียงตามตัวอักษร
+                  return a.binLocation.localeCompare(b.binLocation);
+                });
+              }
+              
+              return sortedLocations.map((loc) => {
+                const badgeColor = getLocationBadgeColor(loc.progressPercentage);
+                
+                return (
+                  <button
+                    key={loc.binId}
+                    onClick={() => setSelectedLocation(loc.binLocation)}
+                    className={`px-3 py-1.5 rounded-full border-2 text-sm font-medium transition-all ${badgeColor} ${
+                      selectedLocation === loc.binLocation 
+                        ? 'ring-2 ring-blue-400 scale-105' 
+                        : 'hover:scale-105'
+                    }`}
+                  >
+                    {loc.binLocation} ({loc.progressPercentage}%)
+                  </button>
+                );
+              });
+            })()}
           </div>
         </div>
 
