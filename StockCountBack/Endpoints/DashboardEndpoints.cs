@@ -286,13 +286,12 @@ public static class DashboardEndpoints
             // Query counting records for the specified date
             // Fetch to memory first, then process
             var countings = await db.NtfCountings
-                .Where(c => c.CreatedAt.HasValue && 
-                           c.CreatedAt.Value >= targetDate && 
-                           c.CreatedAt.Value < nextDate && 
-                           c.BinId.HasValue)
+                .Where(c => c.CreatedAt >= targetDate && 
+                           c.CreatedAt < nextDate && 
+                           c.BinId != null)
                 .Select(c => new { 
-                    CreatedAt = c.CreatedAt.Value, 
-                    BinId = c.BinId.Value 
+                    CreatedAt = c.CreatedAt, 
+                    BinId = c.BinId!.Value 
                 })
                 .ToListAsync();
 
