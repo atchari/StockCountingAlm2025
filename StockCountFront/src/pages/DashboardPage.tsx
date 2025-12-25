@@ -439,6 +439,33 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold">📦 {warehouseDetail.warehouse.whsName}</h1>
         </div>
 
+        {/* Location Badges Overview */}
+        <div className="mb-6 p-4 bg-white rounded-lg shadow">
+          <h2 className="text-lg font-semibold mb-3">📍 Location ทั้งหมด</h2>
+          <div className="flex flex-wrap gap-2">
+            {warehouseDetail.locations.map((loc) => {
+              const isComplete = loc.progressPercentage === 100;
+              const badgeColor = isComplete 
+                ? 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200' 
+                : 'bg-red-100 text-red-800 border-red-300 hover:bg-red-200';
+              
+              return (
+                <button
+                  key={loc.binId}
+                  onClick={() => setSelectedLocation(loc.binLocation)}
+                  className={`px-3 py-1.5 rounded-full border-2 text-sm font-medium transition-all ${badgeColor} ${
+                    selectedLocation === loc.binLocation 
+                      ? 'ring-2 ring-blue-400 scale-105' 
+                      : 'hover:scale-105'
+                  }`}
+                >
+                  {loc.binLocation} ({loc.progressPercentage}%)
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Location Statistics */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
