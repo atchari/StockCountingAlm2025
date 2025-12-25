@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import type { DashboardStatistics, WarehouseDetail, VarianceDetail, HourlyLocationResponse } from '../api';
+import type { DashboardStatistics, WarehouseDetail, VarianceDetail, HourlyLocationResponse, HourlyItemResponse } from '../api';
 import { dashboardAPI } from '../api';
 import { Button } from '../components/ui/button';
 import { ChevronLeft, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Clock, Package, X, Filter, ListFilter, ArrowUp, Calendar } from 'lucide-react';
@@ -35,6 +35,13 @@ export default function DashboardPage() {
   
   // ✨ Cache for hourly data to avoid re-fetching
   const [hourlyDataCache, setHourlyDataCache] = useState<Record<string, HourlyLocationResponse>>({});
+  
+  // State for hourly items data
+  const [hourlyItemsData, setHourlyItemsData] = useState<HourlyItemResponse | null>(null);
+  const [itemsSelectedDate, setItemsSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [warehouseHourlyItemsData, setWarehouseHourlyItemsData] = useState<HourlyItemResponse | null>(null);
+  const [warehouseItemsSelectedDate, setWarehouseItemsSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [hourlyItemsDataCache, setHourlyItemsDataCache] = useState<Record<string, HourlyItemResponse>>({});
 
   useEffect(() => {
     loadStatistics();
@@ -60,6 +67,26 @@ export default function DashboardPage() {
       }
     }
   }, [warehouseSelectedDate]);
+
+  useEffect(() => {
+    // Check cache first for items data
+    if (hourlyItemsDataCache[itemsSelectedDate]) {
+      setHourlyItemsData(hourlyItemsDataCache[itemsSelectedDate]);
+    } else {
+      loadHourlyItemsData(itemsSelectedDate);
+    }
+  }, [itemsSelectedDate]);
+
+  useEffect(() => {
+    if (warehouseDetail) {
+      const cacheKey = `${warehouseDetail.warehouse.whsId}-${warehouseItemsSelectedDate}`;
+      if (hourlyItemsDataCache[cacheKey]) {
+        setWarehouseHourlyItemsData(hourlyItemsDataCache[cacheKey]);
+      } else {
+        loadWarehouseHourlyItemsData(warehouseDetail.warehouse.whsId, warehouseItemsSelectedDate);
+      }
+    }
+  }, [warehouseItemsSelectedDate]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -109,6 +136,29 @@ export default function DashboardPage() {
     }
   };
 
+  const loadHourlyItemsData = async (date: string) => {
+    try {
+      const data = await dashboardAPI.getHourlyItems(date);
+      setHourlyItemsData(data);
+      // Cache the result
+      setHourlyItemsDataCache(prev => ({ ...prev, [date]: data }));
+    } catch (error) {
+      console.error('Failed to load hourly items data:', error);
+    }
+  };
+
+  const loadWarehouseHourlyItemsData = async (whsId: number, date: string) => {
+    try {
+      const data = await dashboardAPI.getWarehouseHourlyItems(whsId, date);
+      setWarehouseHourlyItemsData(data);
+      // Cache the result with warehouse-specific key
+      const cacheKey = `${whsId}-${date}`;
+      setHourlyItemsDataCache(prev => ({ ...prev, [cacheKey]: data }));
+    } catch (error) {
+      console.error('Failed to load warehouse hourly items data:', error);
+    }
+  };
+
   const loadWarehouseDetail = async (whsId: number) => {
     try {
       setLoading(true);
@@ -121,6 +171,7 @@ export default function DashboardPage() {
       
       // Load hourly data for this warehouse
       await loadWarehouseHourlyData(whsId, warehouseSelectedDate);
+      await loadWarehouseHourlyItemsData(whsId, warehouseItemsSelectedDate);
     } catch (error) {
       console.error('Failed to load warehouse detail:', error);
     } finally {
@@ -397,13 +448,13 @@ export default function DashboardPage() {
           {hourlyData ? (
             <div className="h-96">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={hourlyData.data} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                <LineChart data={hourlyData.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="hour" 
                     angle={-45}
                     textAnchor="end"
-                    height={80}
+                    height={60}
                     tick={{ fontSize: 12 }}
                   />
                   <YAxis 
@@ -438,8 +489,74 @@ export default function DashboardPage() {
             </div>
           )}
           
-          <div className="mt-0 text-sm text-gray-600 text-center">
+          <div className="mt-2 text-sm text-gray-600 text-center">
             แสดงจำนวน Location ที่มีการนับในแต่ละชั่วโมง สำหรับวันที่ {selectedDate}
+          </div>
+        </div>
+
+        {/* Hourly Item Count Chart */}
+        <div className="mb-8 p-6 bg-white rounded-lg shadow-lg border-2 border-blue-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              📊 จำนวนรายการที่นับในแต่ละชั่วโมง
+            </h2>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-gray-600" />
+              <input
+                type="date"
+                value={itemsSelectedDate}
+                onChange={(e) => setItemsSelectedDate(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          
+          {hourlyItemsData ? (
+            <div className="h-96">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={hourlyItemsData.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="hour" 
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <YAxis 
+                    label={{ value: 'จำนวนรายการ', angle: -90, position: 'insideLeft' }}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                    labelStyle={{ fontWeight: 'bold', color: '#374151' }}
+                    formatter={(value) => [`${value} รายการ`, 'จำนวน']}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="itemCount" 
+                    stroke="#3b82f6" 
+                    strokeWidth={3}
+                    dot={{ fill: '#3b82f6', r: 5 }}
+                    activeDot={{ r: 8 }}
+                    label={{ 
+                      position: 'top', 
+                      fill: '#2563eb',
+                      fontSize: 12,
+                      fontWeight: 'bold'
+                    }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-96 flex items-center justify-center text-gray-500">
+              กำลังโหลดข้อมูล...
+            </div>
+          )}
+          
+          <div className="mt-2 text-sm text-gray-600 text-center">
+            แสดงจำนวนรายการที่มีการนับในแต่ละชั่วโมง สำหรับวันที่ {itemsSelectedDate}
           </div>
         </div>
 
@@ -632,13 +749,13 @@ export default function DashboardPage() {
           {warehouseHourlyData ? (
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={warehouseHourlyData.data} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                <LineChart data={warehouseHourlyData.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="hour" 
                     angle={-45}
                     textAnchor="end"
-                    height={80}
+                    height={60}
                     tick={{ fontSize: 12 }}
                   />
                   <YAxis 
@@ -673,8 +790,74 @@ export default function DashboardPage() {
             </div>
           )}
           
-          <div className="mt-0 text-sm text-gray-600 text-center">
+          <div className="mt-2 text-sm text-gray-600 text-center">
             แสดงจำนวน Location ที่มีการนับในแต่ละชั่วโมงของคลังนี้ สำหรับวันที่ {warehouseSelectedDate}
+          </div>
+        </div>
+
+        {/* Warehouse Hourly Item Count Chart */}
+        <div className="mb-6 p-6 bg-white rounded-lg shadow-lg border-2 border-blue-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              📊 จำนวนรายการที่นับในแต่ละชั่วโมง - {warehouseDetail.warehouse.whsName}
+            </h2>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-gray-600" />
+              <input
+                type="date"
+                value={warehouseItemsSelectedDate}
+                onChange={(e) => setWarehouseItemsSelectedDate(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          
+          {warehouseHourlyItemsData ? (
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={warehouseHourlyItemsData.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="hour" 
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <YAxis 
+                    label={{ value: 'จำนวนรายการ', angle: -90, position: 'insideLeft' }}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                    labelStyle={{ fontWeight: 'bold', color: '#374151' }}
+                    formatter={(value) => [`${value} รายการ`, 'จำนวน']}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="itemCount" 
+                    stroke="#3b82f6" 
+                    strokeWidth={3}
+                    dot={{ fill: '#3b82f6', r: 5 }}
+                    activeDot={{ r: 8 }}
+                    label={{ 
+                      position: 'top', 
+                      fill: '#2563eb',
+                      fontSize: 12,
+                      fontWeight: 'bold'
+                    }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-80 flex items-center justify-center text-gray-500">
+              กำลังโหลดข้อมูล...
+            </div>
+          )}
+          
+          <div className="mt-2 text-sm text-gray-600 text-center">
+            แสดงจำนวนรายการที่มีการนับในแต่ละชั่วโมงของคลังนี้ สำหรับวันที่ {warehouseItemsSelectedDate}
           </div>
         </div>
 

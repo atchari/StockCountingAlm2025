@@ -373,6 +373,16 @@ export interface HourlyLocationResponse {
   data: HourlyLocationData[];
 }
 
+export interface HourlyItemData {
+  hour: string;
+  itemCount: number;
+}
+
+export interface HourlyItemResponse {
+  date: string;
+  data: HourlyItemData[];
+}
+
 export const dashboardAPI = {
   getStatistics: async () => {
     const response = await apiClient.get<DashboardStatistics>('/api/dashboard/statistics');
@@ -393,6 +403,18 @@ export const dashboardAPI = {
   getWarehouseHourlyLocations: async (whsId: number, date?: string) => {
     const params = date ? { date } : {};
     const response = await apiClient.get<HourlyLocationResponse>(`/api/dashboard/hourly-locations/${whsId}`, { params });
+    return response.data;
+  },
+
+  getHourlyItems: async (date?: string) => {
+    const params = date ? { date } : {};
+    const response = await apiClient.get<HourlyItemResponse>('/api/dashboard/hourly-items', { params });
+    return response.data;
+  },
+
+  getWarehouseHourlyItems: async (whsId: number, date?: string) => {
+    const params = date ? { date } : {};
+    const response = await apiClient.get<HourlyItemResponse>(`/api/dashboard/hourly-items/${whsId}`, { params });
     return response.data;
   },
 };

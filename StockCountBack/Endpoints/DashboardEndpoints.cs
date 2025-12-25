@@ -389,6 +389,132 @@ public static class DashboardEndpoints
                 data = result
             });
         });
+
+        // GET /api/dashboard/hourly-items?date=2025-12-25 - Get hourly item count for a specific date
+        group.MapGet("/hourly-items", async (string? date, StockCountDbContext db) =>
+        {
+            // Parse the date parameter or use today
+            DateTime targetDate;
+            if (string.IsNullOrEmpty(date) || !DateTime.TryParse(date, out targetDate))
+            {
+                targetDate = DateTime.Today;
+            }
+            else
+            {
+                targetDate = targetDate.Date;
+            }
+
+            var nextDate = targetDate.AddDays(1);
+
+            // Query counting records for the specified date
+            var countings = await db.NtfCountings
+                .Where(c => c.CreatedAt >= targetDate && c.CreatedAt < nextDate)
+                .Select(c => new { 
+                    CreatedAt = c.CreatedAt
+                })
+                .ToListAsync();
+
+            // Convert to Thailand timezone (UTC+7) and group by hour
+            var thailandTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            var hourlyItemCounts = countings
+                .Select(c => new
+                {
+                    Hour = TimeZoneInfo.ConvertTimeFromUtc(
+                        DateTime.SpecifyKind(c.CreatedAt, DateTimeKind.Utc),
+                        thailandTimeZone
+                    ).Hour
+                })
+                .GroupBy(c => c.Hour)
+                .Select(g => new 
+                { 
+                    Hour = g.Key,
+                    ItemCount = g.Count()
+                })
+                .OrderBy(x => x.Hour)
+                .ToList();
+
+            // Create a complete 24-hour result (0-23)
+            var result = Enumerable.Range(0, 24)
+                .Select(hour =>
+                {
+                    var data = hourlyItemCounts.FirstOrDefault(h => h.Hour == hour);
+                    return new
+                    {
+                        hour = $"{hour:D2}:00",
+                        itemCount = data?.ItemCount ?? 0
+                    };
+                })
+                .ToList();
+
+            return Results.Ok(new
+            {
+                date = targetDate.ToString("yyyy-MM-dd"),
+                data = result
+            });
+        });
+
+        // GET /api/dashboard/hourly-items/{whsId}?date=2025-12-25 - Get hourly item count for a specific warehouse and date
+        group.MapGet("/hourly-items/{whsId}", async (int whsId, string? date, StockCountDbContext db) =>
+        {
+            // Parse the date parameter or use today
+            DateTime targetDate;
+            if (string.IsNullOrEmpty(date) || !DateTime.TryParse(date, out targetDate))
+            {
+                targetDate = DateTime.Today;
+            }
+            else
+            {
+                targetDate = targetDate.Date;
+            }
+
+            var nextDate = targetDate.AddDays(1);
+
+            // Query counting records for the specified warehouse and date
+            var countings = await db.NtfCountings
+                .Where(c => c.WhsId == whsId && c.CreatedAt >= targetDate && c.CreatedAt < nextDate)
+                .Select(c => new { 
+                    CreatedAt = c.CreatedAt
+                })
+                .ToListAsync();
+
+            // Convert to Thailand timezone (UTC+7) and group by hour
+            var thailandTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            var hourlyItemCounts = countings
+                .Select(c => new
+                {
+                    Hour = TimeZoneInfo.ConvertTimeFromUtc(
+                        DateTime.SpecifyKind(c.CreatedAt, DateTimeKind.Utc),
+                        thailandTimeZone
+                    ).Hour
+                })
+                .GroupBy(c => c.Hour)
+                .Select(g => new 
+                { 
+                    Hour = g.Key,
+                    ItemCount = g.Count()
+                })
+                .OrderBy(x => x.Hour)
+                .ToList();
+
+            // Create a complete 24-hour result (0-23)
+            var result = Enumerable.Range(0, 24)
+                .Select(hour =>
+                {
+                    var data = hourlyItemCounts.FirstOrDefault(h => h.Hour == hour);
+                    return new
+                    {
+                        hour = $"{hour:D2}:00",
+                        itemCount = data?.ItemCount ?? 0
+                    };
+                })
+                .ToList();
+
+            return Results.Ok(new
+            {
+                date = targetDate.ToString("yyyy-MM-dd"),
+                data = result
+            });
+        });
     }
 
     // Result classes for SQL queries
