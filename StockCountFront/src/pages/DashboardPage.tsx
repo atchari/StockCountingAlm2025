@@ -26,6 +26,7 @@ export default function DashboardPage() {
   const [displayMode, setDisplayMode] = useState<DisplayMode>('variance');
   const [sorting, setSorting] = useState<SortingState>([]);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [badgeView, setBadgeView] = useState(false);
 
   useEffect(() => {
     loadStatistics();
@@ -437,7 +438,51 @@ export default function DashboardPage() {
             กลับ
           </Button>
           <h1 className="text-3xl font-bold">📦 {warehouseDetail.warehouse.whsName}</h1>
+          
+          {/* Toggle View Buttons - Show only for warehouses with locations */}
+          {warehouseDetail.locations.length > 0 && (
+            <div className="ml-auto flex gap-2">
+              <Button 
+                onClick={() => setBadgeView(false)} 
+                variant={!badgeView ? 'default' : 'outline'}
+                size="sm"
+              >
+                <ListFilter className="w-4 h-4 mr-1" />
+                ดูแบบเต็ม
+              </Button>
+              <Button 
+                onClick={() => setBadgeView(true)} 
+                variant={badgeView ? 'default' : 'outline'}
+                size="sm"
+              >
+                <Package className="w-4 h-4 mr-1" />
+                ดู Badge
+              </Button>
+            </div>
+          )}
         </div>
+
+        {/* Warehouse Summary - Show in badge view */}
+        {badgeView && (
+          <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+              <p className="text-sm text-gray-600 mb-1">ทั้งหมด</p>
+              <p className="text-2xl font-bold text-gray-800">{warehouseDetail.warehouse.totalItems}</p>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
+              <p className="text-sm text-gray-600 mb-1">นับแล้ว</p>
+              <p className="text-2xl font-bold text-green-600">{warehouseDetail.warehouse.countedItems}</p>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
+              <p className="text-sm text-gray-600 mb-1">ไม่ตรง</p>
+              <p className="text-2xl font-bold text-red-600">{warehouseDetail.warehouse.varianceItems}</p>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-purple-500">
+              <p className="text-sm text-gray-600 mb-1">ความคืบหน้า</p>
+              <p className="text-2xl font-bold text-purple-600">{warehouseDetail.warehouse.progressPercentage}%</p>
+            </div>
+          </div>
+        )}
 
         {/* Location Badges Overview */}
         <div className="mb-6 p-4 bg-white rounded-lg shadow">
@@ -466,7 +511,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Location Statistics */}
+        {/* Location Statistics - Hide in badge view */}
+        {!badgeView && (
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold">📍 สถานะแยกตาม Location</h2>
@@ -540,9 +586,10 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
+        )}
 
-        {/* Counting Details - Show when there are counted items */}
-        {warehouseDetail.allCountedItems.length > 0 && (
+        {/* Counting Details - Show when there are counted items and not in badge view */}
+        {!badgeView && warehouseDetail.allCountedItems.length > 0 && (
           <div className={`p-6 rounded-lg border-2 ${displayMode === 'variance' ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
             <div className="flex items-center justify-between mb-4">
               <h2 className={`text-2xl font-bold flex items-center gap-2 ${displayMode === 'variance' ? 'text-red-700' : 'text-blue-700'}`}>
