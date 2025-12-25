@@ -283,19 +283,22 @@ public static class DashboardEndpoints
 
             var nextDate = targetDate.AddDays(1);
 
-            // Query counting records for the specified date and count distinct locations per hour
-            var hourlyData = await db.NtfCountings
-                .Where(c => c.CreatedAt >= targetDate && c.CreatedAt < nextDate && c.BinId != null)
-                .GroupBy(c => new { 
-                    Hour = c.CreatedAt!.Value.Hour,
-                    BinId = c.BinId!.Value 
+            // Query counting records for the specified date
+            // Fetch to memory first, then process
+            var countings = await db.NtfCountings
+                .Where(c => c.CreatedAt.HasValue && 
+                           c.CreatedAt.Value >= targetDate && 
+                           c.CreatedAt.Value < nextDate && 
+                           c.BinId.HasValue)
+                .Select(c => new { 
+                    CreatedAt = c.CreatedAt.Value, 
+                    BinId = c.BinId.Value 
                 })
-                .Select(g => new { g.Key.Hour, g.Key.BinId })
                 .ToListAsync();
 
-            // Count unique locations per hour
-            var hourlyLocationCounts = hourlyData
-                .GroupBy(x => x.Hour)
+            // Group by hour and count distinct locations in memory
+            var hourlyLocationCounts = countings
+                .GroupBy(c => c.CreatedAt.Hour)
                 .Select(g => new 
                 { 
                     Hour = g.Key,
