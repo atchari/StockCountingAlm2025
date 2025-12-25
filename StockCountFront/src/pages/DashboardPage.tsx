@@ -30,6 +30,8 @@ export default function DashboardPage() {
   const [badgeView, setBadgeView] = useState(false);
   const [hourlyData, setHourlyData] = useState<HourlyLocationResponse | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [warehouseHourlyData, setWarehouseHourlyData] = useState<HourlyLocationResponse | null>(null);
+  const [warehouseSelectedDate, setWarehouseSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     loadStatistics();
@@ -39,6 +41,12 @@ export default function DashboardPage() {
   useEffect(() => {
     loadHourlyData(selectedDate);
   }, [selectedDate]);
+
+  useEffect(() => {
+    if (warehouseDetail) {
+      loadWarehouseHourlyData(warehouseDetail.warehouse.whsId, warehouseSelectedDate);
+    }
+  }, [warehouseSelectedDate]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -74,6 +82,15 @@ export default function DashboardPage() {
     }
   };
 
+  const loadWarehouseHourlyData = async (whsId: number, date: string) => {
+    try {
+      const data = await dashboardAPI.getWarehouseHourlyLocations(whsId, date);
+      setWarehouseHourlyData(data);
+    } catch (error) {
+      console.error('Failed to load warehouse hourly data:', error);
+    }
+  };
+
   const loadWarehouseDetail = async (whsId: number) => {
     try {
       setLoading(true);
@@ -83,6 +100,9 @@ export default function DashboardPage() {
       setSelectedLocation(null); // Reset filter
       setDisplayMode('variance'); // Reset to variance mode
       setViewMode('warehouse');
+      
+      // Load hourly data for this warehouse
+      await loadWarehouseHourlyData(whsId, warehouseSelectedDate);
     } catch (error) {
       console.error('Failed to load warehouse detail:', error);
     } finally {
@@ -340,7 +360,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Hourly Location Count Chart */}
-        <div className="mb-8 p-6 bg-white rounded-lg shadow-lg border-2 border-indigo-200">
+        <div className="mb-8 p-6 bg-white rounded-lg shadow-lg border-2 border-green-200">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold flex items-center gap-2">
               📈 จำนวน Location ที่นับในแต่ละชั่วโมง
@@ -351,7 +371,7 @@ export default function DashboardPage() {
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
               />
             </div>
           </div>
@@ -381,7 +401,7 @@ export default function DashboardPage() {
                     {hourlyData.data.map((entry, index) => (
                       <Cell 
                         key={`cell-${index}`} 
-                        fill={entry.locationCount > 0 ? '#4f46e5' : '#e5e7eb'} 
+                        fill={entry.locationCount > 0 ? '#10b981' : '#e5e7eb'} 
                       />
                     ))}
                   </Bar>
@@ -567,6 +587,66 @@ export default function DashboardPage() {
             </div>
           );
         })()}
+
+        {/* Warehouse Hourly Location Count Chart */}
+        <div className="mb-6 p-6 bg-white rounded-lg shadow-lg border-2 border-green-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              📈 จำนวน Location ที่นับในแต่ละชั่วโมง - {warehouseDetail.warehouse.whsName}
+            </h2>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-gray-600" />
+              <input
+                type="date"
+                value={warehouseSelectedDate}
+                onChange={(e) => setWarehouseSelectedDate(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+          </div>
+          
+          {warehouseHourlyData ? (
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={warehouseHourlyData.data} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="hour" 
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <YAxis 
+                    label={{ value: 'จำนวน Location', angle: -90, position: 'insideLeft' }}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                    labelStyle={{ fontWeight: 'bold', color: '#374151' }}
+                    formatter={(value) => [`${value} locations`, 'จำนวน']}
+                  />
+                  <Bar dataKey="locationCount" radius={[8, 8, 0, 0]}>
+                    {warehouseHourlyData.data.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={entry.locationCount > 0 ? '#10b981' : '#e5e7eb'} 
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-80 flex items-center justify-center text-gray-500">
+              กำลังโหลดข้อมูล...
+            </div>
+          )}
+          
+          <div className="mt-4 text-sm text-gray-600 text-center">
+            แสดงจำนวน Location ที่มีการนับในแต่ละชั่วโมงของคลังนี้ สำหรับวันที่ {warehouseSelectedDate}
+          </div>
+        </div>
 
         {/* Location Badges Overview */}
         <div className="mb-6 p-4 bg-white rounded-lg shadow">

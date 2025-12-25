@@ -389,4 +389,10 @@ export const dashboardAPI = {
     const response = await apiClient.get<HourlyLocationResponse>('/api/dashboard/hourly-locations', { params });
     return response.data;
   },
+
+  getWarehouseHourlyLocations: async (whsId: number, date?: string) => {
+    const params = date ? { date } : {};
+    const response = await apiClient.get<HourlyLocationResponse>(`/api/dashboard/hourly-locations/${whsId}`, { params });
+    return response.data;
+  },
 };
