@@ -28,57 +28,55 @@ public static class DashboardEndpoints
 
             var overallProgress = totalFreezeItems > 0 ? (decimal)totalCountedItems / totalFreezeItems * 100 : 0;
 
-            // Warehouse-level statistics using LINQ
+            // ✨ OPTIMIZED: Batch query all warehouse statistics in one go
             var warehouses = await db.NtfWhsGroups.ToListAsync();
-            var warehouseStats = new List<WarehouseStatResult>();
+            
+            // Load all freeze data with counting info in one query
+            var allFreezeData = await db.NtfFreezeDatas
+                .Select(f => new
+                {
+                    f.WhsId,
+                    f.BinId,
+                    f.Sku,
+                    BatchNo = f.BatchNo ?? "",
+                    f.Qty,
+                    HasCount = db.NtfCountings.Any(c =>
+                        c.WhsId == f.WhsId &&
+                        c.Sku == f.Sku &&
+                        (c.BatchNo == f.BatchNo || (c.BatchNo == null && f.BatchNo == null))),
+                    CountQty = db.NtfCountings
+                        .Where(c => c.WhsId == f.WhsId && c.Sku == f.Sku &&
+                            (c.BatchNo == f.BatchNo || (c.BatchNo == null && f.BatchNo == null)))
+                        .Select(c => (decimal?)c.Qty)
+                        .FirstOrDefault()
+                })
+                .ToListAsync();
 
-            foreach (var whs in warehouses)
+            var allCountedLocations = await db.NtfCountings
+                .Where(c => c.BinId != null)
+                .Select(c => new { c.WhsId, c.BinId })
+                .Distinct()
+                .ToListAsync();
+
+            var warehouseStats = warehouses.Select(whs =>
             {
-                var totalItems = await db.NtfFreezeDatas.Where(f => f.WhsId == whs.Id).CountAsync();
-                
-                // Count only FreezeData items that have been counted (ignore binId for matching)
-                var countedItems = await db.NtfFreezeDatas
-                    .Where(f => f.WhsId == whs.Id && db.NtfCountings.Any(c =>
-                        c.WhsId == f.WhsId &&
-                        c.Sku == f.Sku &&
-                        (c.BatchNo == f.BatchNo || (c.BatchNo == null && f.BatchNo == null))))
-                    .CountAsync();
+                var whsFreeze = allFreezeData.Where(f => f.WhsId == whs.Id).ToList();
+                var countedItems = whsFreeze.Count(f => f.HasCount);
+                var varianceItems = whsFreeze.Count(f => f.HasCount && f.CountQty.HasValue && f.CountQty.Value != f.Qty);
+                var totalLocations = whsFreeze.Where(f => f.BinId != null).Select(f => f.BinId).Distinct().Count();
+                var countedLocations = allCountedLocations.Count(c => c.WhsId == whs.Id);
 
-                // Count variance items (ignore binId for matching)
-                var varianceItems = await db.NtfFreezeDatas
-                    .Where(f => f.WhsId == whs.Id && db.NtfCountings.Any(c =>
-                        c.WhsId == f.WhsId &&
-                        c.Sku == f.Sku &&
-                        (c.BatchNo == f.BatchNo || (c.BatchNo == null && f.BatchNo == null)) &&
-                        c.Qty != f.Qty))
-                    .CountAsync();
-
-                // Count total locations from FreezeData
-                var totalLocations = await db.NtfFreezeDatas
-                    .Where(f => f.WhsId == whs.Id && f.BinId != null)
-                    .Select(f => f.BinId)
-                    .Distinct()
-                    .CountAsync();
-
-                // Count locations that have been counted
-                var countedLocations = await db.NtfFreezeDatas
-                    .Where(f => f.WhsId == whs.Id && f.BinId != null && 
-                        db.NtfCountings.Any(c => c.WhsId == f.WhsId && c.BinId == f.BinId))
-                    .Select(f => f.BinId)
-                    .Distinct()
-                    .CountAsync();
-
-                warehouseStats.Add(new WarehouseStatResult
+                return new WarehouseStatResult
                 {
                     WhsId = whs.Id,
                     WhsName = whs.WhsName,
-                    TotalItems = totalItems,
+                    TotalItems = whsFreeze.Count,
                     CountedItems = countedItems,
                     VarianceItems = varianceItems,
                     TotalLocations = totalLocations,
                     CountedLocations = countedLocations
-                });
-            }
+                };
+            }).ToList();
 
             return Results.Ok(new
             {
@@ -113,13 +111,22 @@ public static class DashboardEndpoints
             if (warehouse == null)
                 return Results.NotFound(new { error = "Warehouse not found" });
 
-            // Location-level statistics using LINQ
-            // Get all freeze data for this warehouse first
+            // ✨ OPTIMIZED: Load all data in batch queries
             var freezeData = await db.NtfFreezeDatas
                 .Where(f => f.WhsId == whsId)
                 .ToListAsync();
 
-            // Group in memory to avoid nullable GroupBy issues
+            var allCountings = await db.NtfCountings
+                .Where(c => c.WhsId == whsId)
+                .ToListAsync();
+
+            // Pre-load all locations in one query
+            var locationIds = freezeData.Where(f => f.BinId != null).Select(f => f.BinId!.Value).Distinct().ToList();
+            var locationsDict = await db.NtfLocations
+                .Where(l => locationIds.Contains(l.Id))
+                .ToDictionaryAsync(l => l.Id, l => l.BinLocation);
+
+            // Group and process in memory
             var locationGroups = freezeData.GroupBy(f => f.BinId ?? 0);
 
             var locationStats = new List<LocationStatResult>();
@@ -127,32 +134,22 @@ public static class DashboardEndpoints
             foreach (var group in locationGroups)
             {
                 var binId = group.Key;
-                var binLocation = binId == 0 ? "No Location" :
-                    (await db.NtfLocations.FindAsync(binId))?.BinLocation ?? "Unknown";
+                var binLocation = binId == 0 ? "No Location" : (locationsDict.GetValueOrDefault(binId) ?? "Unknown");
 
                 var totalItems = group.Count();
-                
-                // Count items that have been counted
                 var countedItems = 0;
                 var varianceItems = 0;
-                
+
                 foreach (var f in group)
                 {
-                    var hasCount = await db.NtfCountings.AnyAsync(c =>
-                        c.WhsId == f.WhsId &&
+                    var counting = allCountings.FirstOrDefault(c =>
                         c.Sku == f.Sku &&
                         (c.BatchNo == f.BatchNo || (c.BatchNo == null && f.BatchNo == null)));
-                    
-                    if (hasCount)
+
+                    if (counting != null)
                     {
                         countedItems++;
-                        
-                        var counting = await db.NtfCountings.FirstOrDefaultAsync(c =>
-                            c.WhsId == f.WhsId &&
-                            c.Sku == f.Sku &&
-                            (c.BatchNo == f.BatchNo || (c.BatchNo == null && f.BatchNo == null)));
-                        
-                        if (counting != null && counting.Qty != f.Qty)
+                        if (counting.Qty != f.Qty)
                         {
                             varianceItems++;
                         }
@@ -171,18 +168,8 @@ public static class DashboardEndpoints
 
             locationStats = locationStats.OrderBy(l => l.BinLocation).ToList();
 
-            // All counted items and variance details
-            // Load data separately to handle nullable fields properly
-            var allFreeze = await db.NtfFreezeDatas
-                .Where(f => f.WhsId == whsId)
-                .ToListAsync();
-            
-            var allCountings = await db.NtfCountings
-                .Where(c => c.WhsId == whsId)
-                .ToListAsync();
-            
             // Join in memory - all counted items
-            var allCountedItems = (from f in allFreeze
+            var allCountedItems = (from f in freezeData
                                   join c in allCountings
                                   on new { 
                                       f.Sku, 
@@ -198,8 +185,8 @@ public static class DashboardEndpoints
 
             foreach (var item in allCountedItems)
             {
-                var binLocation = item.Freeze.BinId == null ? "No Location" :
-                    (await db.NtfLocations.FindAsync(item.Freeze.BinId))?.BinLocation ?? "Unknown";
+                var binLocation = item.Freeze.BinId == null ? "No Location" : 
+                    (locationsDict.GetValueOrDefault(item.Freeze.BinId.Value) ?? "Unknown");
 
                 var variance = Math.Abs(item.Count.Qty - item.Freeze.Qty);
                 var hasVariance = item.Count.Qty != item.Freeze.Qty;

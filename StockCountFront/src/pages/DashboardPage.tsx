@@ -32,19 +32,32 @@ export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [warehouseHourlyData, setWarehouseHourlyData] = useState<HourlyLocationResponse | null>(null);
   const [warehouseSelectedDate, setWarehouseSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  
+  // ✨ Cache for hourly data to avoid re-fetching
+  const [hourlyDataCache, setHourlyDataCache] = useState<Record<string, HourlyLocationResponse>>({});
 
   useEffect(() => {
     loadStatistics();
-    loadHourlyData(selectedDate);
+    // Only load hourly data on demand, not on initial load
   }, []);
 
   useEffect(() => {
-    loadHourlyData(selectedDate);
+    // Check cache first before fetching
+    if (hourlyDataCache[selectedDate]) {
+      setHourlyData(hourlyDataCache[selectedDate]);
+    } else {
+      loadHourlyData(selectedDate);
+    }
   }, [selectedDate]);
 
   useEffect(() => {
     if (warehouseDetail) {
-      loadWarehouseHourlyData(warehouseDetail.warehouse.whsId, warehouseSelectedDate);
+      const cacheKey = `${warehouseDetail.warehouse.whsId}-${warehouseSelectedDate}`;
+      if (hourlyDataCache[cacheKey]) {
+        setWarehouseHourlyData(hourlyDataCache[cacheKey]);
+      } else {
+        loadWarehouseHourlyData(warehouseDetail.warehouse.whsId, warehouseSelectedDate);
+      }
     }
   }, [warehouseSelectedDate]);
 
@@ -77,6 +90,8 @@ export default function DashboardPage() {
     try {
       const data = await dashboardAPI.getHourlyLocations(date);
       setHourlyData(data);
+      // Cache the result
+      setHourlyDataCache(prev => ({ ...prev, [date]: data }));
     } catch (error) {
       console.error('Failed to load hourly data:', error);
     }
@@ -86,6 +101,9 @@ export default function DashboardPage() {
     try {
       const data = await dashboardAPI.getWarehouseHourlyLocations(whsId, date);
       setWarehouseHourlyData(data);
+      // Cache the result with warehouse-specific key
+      const cacheKey = `${whsId}-${date}`;
+      setHourlyDataCache(prev => ({ ...prev, [cacheKey]: data }));
     } catch (error) {
       console.error('Failed to load warehouse hourly data:', error);
     }
