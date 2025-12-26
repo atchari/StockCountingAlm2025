@@ -137,22 +137,24 @@ public static class DashboardEndpoints
                 var binLocation = binId == 0 ? "No Location" : (locationsDict.GetValueOrDefault(binId) ?? "Unknown");
 
                 var totalItems = group.Count();
-                var countedItems = 0;
+                
+                // 🔧 FIX: นับจำนวน Counting records ที่มี BinId ตรงกับ location นี้จริงๆ
+                // ไม่ใช่นับเฉพาะที่ match กับ FreezeData
+                var countedItems = binId == 0 
+                    ? 0 // No location ไม่นับ
+                    : allCountings.Count(c => c.BinId == binId);
+                
+                // นับรายการที่มียอดไม่ตรง (เฉพาะที่ match กับ FreezeData)
                 var varianceItems = 0;
-
                 foreach (var f in group)
                 {
                     var counting = allCountings.FirstOrDefault(c =>
                         c.Sku == f.Sku &&
                         (c.BatchNo == f.BatchNo || (c.BatchNo == null && f.BatchNo == null)));
 
-                    if (counting != null)
+                    if (counting != null && counting.Qty != f.Qty)
                     {
-                        countedItems++;
-                        if (counting.Qty != f.Qty)
-                        {
-                            varianceItems++;
-                        }
+                        varianceItems++;
                     }
                 }
 
